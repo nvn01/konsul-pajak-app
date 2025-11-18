@@ -75,3 +75,22 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+
+# Node.js / Next.js
+node_modules/
+.pnp
+.pnp.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+.vercel
+
+# Node package manager debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# SSL certificates
+*.pem
