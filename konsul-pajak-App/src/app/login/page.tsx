@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { status } = useSession();
+  const popupRef = useRef<Window | null>(null);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -23,7 +24,7 @@ export default function LoginPage() {
 
   const popupCenter = useCallback(
     (url: string, title: string, w = 500, h = 600) => {
-      if (typeof window === "undefined") return;
+      if (typeof window === "undefined") return null;
 
       const dualScreenLeft = window.screenLeft ?? window.screenX ?? 0;
       const dualScreenTop = window.screenTop ?? window.screenY ?? 0;
@@ -46,17 +47,48 @@ export default function LoginPage() {
       );
 
       newWindow?.focus();
+      return newWindow ?? null;
     },
     [],
   );
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      const { type, callbackUrl } = event.data ?? {};
+      if (type === "NEXTAUTH_SIGNIN_SUCCESS") {
+        popupRef.current?.close();
+        popupRef.current = null;
+        setIsLoading(false);
+        router.replace(
+          typeof callbackUrl === "string" && callbackUrl.length > 0
+            ? callbackUrl
+            : "/chat",
+        );
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [router]);
+
   const handleGoogleLogin = useCallback(() => {
     setIsLoading(true);
-    popupCenter(
-      `/google-signin?callbackUrl=${encodeURIComponent("/chat")}`,
+    const popup = popupCenter(
+      `/google-signin?redirectTo=${encodeURIComponent("/chat")}`,
       "Login Konsul Pajak",
     );
-    setTimeout(() => setIsLoading(false), 1000);
+
+    if (popup) {
+      popupRef.current = popup;
+    } else {
+      setIsLoading(false);
+    }
   }, [popupCenter]);
 
   const handleEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {
