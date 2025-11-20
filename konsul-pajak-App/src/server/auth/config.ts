@@ -3,6 +3,7 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { DefaultSession, NextAuthConfig } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 
 import { db } from "../db";
 import { env } from "../../env";
@@ -31,6 +32,35 @@ export const authConfig: NextAuthConfig = {
     GoogleProvider({
       clientId: String(env.GOOGLE_CLIENT_ID),
       clientSecret: String(env.GOOGLE_CLIENT_SECRET),
+    }),
+    CredentialsProvider({
+      id: "credentials",
+      name: "Email OTP",
+      credentials: {
+        email: { label: "Email", type: "email" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email) {
+          return null;
+        }
+
+        // Find user by email
+        const user = await db.user.findUnique({
+          where: { email: credentials.email as string },
+        });
+
+        if (!user) {
+          return null;
+        }
+
+        // Return user object for session
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+        };
+      },
     }),
   ],
   adapter: PrismaAdapter(db),
