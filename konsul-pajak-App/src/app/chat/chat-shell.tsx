@@ -3,12 +3,22 @@
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
+import { LogOut } from "lucide-react";
 
 import { ChatMessage } from "@/components/chat-message";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { api } from "nvn/trpc/react";
 
 interface ChatShellProps {
@@ -18,6 +28,7 @@ interface ChatShellProps {
 export function ChatShell({ initialChatId }: ChatShellProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [message, setMessage] = useState("");
 
   const utils = api.useUtils();
@@ -121,9 +132,8 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     return historyQuery.data?.map((chat) => (
       <Link key={chat.id} href={`/chat/${chat.id}`}>
         <div
-          className={`hover:bg-sidebar-accent rounded-lg p-3 transition-colors ${
-            initialChatId === chat.id ? "bg-sidebar-accent" : ""
-          }`}
+          className={`hover:bg-sidebar-accent rounded-lg p-3 transition-colors ${initialChatId === chat.id ? "bg-sidebar-accent" : ""
+            }`}
         >
           <div className="truncate text-sm font-medium">{chat.title}</div>
           <div className="text-sidebar-foreground/60 mt-1 text-xs">
@@ -147,15 +157,41 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
               <h1 className="text-lg font-bold">Konsul Pajak</h1>
             </Link>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-primary-foreground hover:bg-primary-foreground/10"
-            type="button"
-            onClick={handleLogout}
-          >
-            Logout
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="relative h-10 w-10 rounded-full p-0"
+              >
+                <Avatar className="h-10 w-10">
+                  <AvatarImage
+                    src={session?.user?.image ?? ""}
+                    alt={session?.user?.name ?? "User"}
+                  />
+                  <AvatarFallback className="bg-accent text-accent-foreground">
+                    {session?.user?.name?.charAt(0)?.toUpperCase() ?? "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {session?.user?.name}
+                  </p>
+                  <p className="text-muted-foreground text-xs leading-none">
+                    {session?.user?.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
