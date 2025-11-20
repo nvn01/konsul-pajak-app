@@ -33,6 +33,9 @@ export const chatRouter = createTRPCRouter({
     const messages = await ctx.db.message.findMany({
       where: { chatId: chat.id },
       orderBy: { createdAt: 'asc' },
+      include: {
+        feedback: true, // Include feedback data
+      },
     });
 
     return messages.map((msg) => ({
@@ -41,6 +44,7 @@ export const chatRouter = createTRPCRouter({
       content: msg.content,
       createdAt: msg.createdAt,
       sources: (msg.sources ?? undefined) as SourceCitation[] | undefined,
+      feedback: msg.feedback ? { rating: msg.feedback.rating as 'suka' | 'tidak_suka' } : null,
     }));
   }),
 
@@ -149,6 +153,37 @@ export const chatRouter = createTRPCRouter({
       });
 
       return feedback;
+    }),
+
+  deleteFeedback: protectedProcedure
+    .input(
+      z.object({
+        messageId: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const message = await ctx.db.message.findFirst({
+        where: {
+          id: input.messageId,
+          chat: {
+            userId: ctx.session.user.id,
+          },
+        },
+      });
+
+      if (!message) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Pesan tidak ditemukan' });
+      }
+
+      // Delete the feedback if it exists
+      await ctx.db.feedback.deleteMany({
+        where: {
+          messageId: message.id,
+          userId: ctx.session.user.id,
+        },
+      });
+
+      return { success: true };
     }),
 });
 

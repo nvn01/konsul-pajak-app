@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { api, type RouterOutputs } from "nvn/trpc/react"
@@ -12,7 +12,14 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
-  const [selectedFeedback, setSelectedFeedback] = useState<"suka" | "tidak_suka" | null>(null)
+  const [selectedFeedback, setSelectedFeedback] = useState<"suka" | "tidak_suka" | null>(
+    message.feedback?.rating ?? null
+  )
+
+  // Update local state when message feedback changes (e.g., after refetch)
+  useEffect(() => {
+    setSelectedFeedback(message.feedback?.rating ?? null)
+  }, [message.feedback])
 
   const feedbackMutation = api.chat.submitFeedback.useMutation({
     onSuccess: (_, variables) => {
@@ -20,8 +27,25 @@ export function ChatMessage({ message }: ChatMessageProps) {
     },
   })
 
+  const deleteFeedbackMutation = api.chat.deleteFeedback.useMutation({
+    onSuccess: () => {
+      setSelectedFeedback(null)
+    },
+  })
+
   const handleFeedback = (rating: "suka" | "tidak_suka") => {
-    if (selectedFeedback === rating) return
+    // If clicking the same button, cancel the selection
+    if (selectedFeedback === rating) {
+      deleteFeedbackMutation.mutate(
+        { messageId: message.id },
+        {
+          onError: (error) => {
+            console.error("[Chat] Failed to delete feedback", error)
+          },
+        },
+      )
+      return
+    }
 
     setSelectedFeedback(rating)
 
@@ -44,11 +68,10 @@ export function ChatMessage({ message }: ChatMessageProps) {
       <div className={`max-w-[80%] space-y-2 ${message.role === 'user' ? 'order-2' : ''}`}>
         {/* Message Bubble */}
         <div
-          className={`rounded-lg p-4 ${
-            message.role === 'user'
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-card border border-border'
-          }`}
+          className={`rounded-lg p-4 ${message.role === 'user'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-card border border-border'
+            }`}
         >
           <div className="text-sm font-medium mb-2">
             {message.role === 'user' ? 'Anda' : 'Asisten Pajak'}
@@ -64,30 +87,28 @@ export function ChatMessage({ message }: ChatMessageProps) {
               variant="ghost"
               size="sm"
               onClick={() => handleFeedback('suka')}
-              className={`h-8 px-2 ${
-                selectedFeedback === 'suka'
-                  ? 'bg-accent/20 text-accent-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className={`h-8 px-2 ${selectedFeedback === 'suka'
+                ? 'bg-accent/20 text-accent-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+                }`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M7 10v12"/>
-                <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/>
+                <path d="M7 10v12" />
+                <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z" />
               </svg>
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => handleFeedback('tidak_suka')}
-              className={`h-8 px-2 ${
-                selectedFeedback === 'tidak_suka'
-                  ? 'bg-destructive/20 text-destructive'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className={`h-8 px-2 ${selectedFeedback === 'tidak_suka'
+                ? 'bg-destructive/20 text-destructive'
+                : 'text-muted-foreground hover:text-foreground'
+                }`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 14V2"/>
-                <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/>
+                <path d="M17 14V2" />
+                <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z" />
               </svg>
             </Button>
           </div>
