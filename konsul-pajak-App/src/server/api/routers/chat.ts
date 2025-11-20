@@ -5,7 +5,7 @@ import { answerTaxQuestion, type SourceCitation } from 'nvn/server/ai/chat-agent
 import { createTRPCRouter, protectedProcedure } from 'nvn/server/api/trpc';
 
 const chatIdInput = z.object({
-  chatId: z.number().int().positive(),
+  chatId: z.string().uuid(),
 });
 
 export const chatRouter = createTRPCRouter({
@@ -57,7 +57,7 @@ export const chatRouter = createTRPCRouter({
   sendMessage: protectedProcedure
     .input(
       z.object({
-        chatId: z.number().int().positive(),
+        chatId: z.string().uuid(),
         message: z.string().min(1, 'Pesan tidak boleh kosong').max(2000, 'Pesan terlalu panjang'),
       }),
     )
