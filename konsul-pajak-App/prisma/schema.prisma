@@ -76,8 +76,8 @@ model Admin {
 }
 
 model Chat {
-  id        Int       @id @default(autoincrement())
-  userId    String    // <- Ini sekarang terhubung ke User.id (String CUID) dari NextAuth
+  id        String    @id @default(uuid())
+  userId    String
   title     String    @default("Percakapan Baru")
   createdAt DateTime  @default(now())
 
@@ -89,7 +89,7 @@ model Chat {
 
 model Message {
   id        Int       @id @default(autoincrement())
-  chatId    Int
+  chatId    String
   role      String    // 'user' atau 'assistant'
   content   String    @db.Text
   sources   Json?     // Menyimpan data sitasi (sources)
