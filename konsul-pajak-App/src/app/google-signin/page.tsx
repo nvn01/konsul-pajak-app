@@ -7,7 +7,7 @@ import { signIn, useSession } from 'next-auth/react'
 export default function GoogleSignInPopup() {
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') ?? '/chat'
+  const redirectTo = searchParams.get('redirectTo') ?? '/chat'
   const signInStarted = useRef(false)
 
   useEffect(() => {
@@ -15,8 +15,9 @@ export default function GoogleSignInPopup() {
 
     if (!session && !signInStarted.current) {
       signInStarted.current = true
+      const popupReturnUrl = window.location.href
       void signIn('google', {
-        callbackUrl,
+        callbackUrl: popupReturnUrl,
         prompt: 'select_account',
       })
     }
@@ -25,13 +26,18 @@ export default function GoogleSignInPopup() {
       const opener = window.opener as (Window & typeof globalThis) | null
       if (opener && typeof opener.postMessage === 'function') {
         opener.postMessage(
-          { type: 'NEXTAUTH_SIGNIN_SUCCESS', callbackUrl },
+          { type: 'NEXTAUTH_SIGNIN_SUCCESS', callbackUrl: redirectTo },
           window.location.origin
         )
       }
       window.close()
+      setTimeout(() => {
+        if (!window.closed) {
+          window.location.href = redirectTo
+        }
+      }, 300)
     }
-  }, [session, status, callbackUrl])
+  }, [session, status, redirectTo])
 
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-white text-sm text-muted-foreground">

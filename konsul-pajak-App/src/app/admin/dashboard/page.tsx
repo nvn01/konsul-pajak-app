@@ -119,8 +119,8 @@ export default function AdminDashboardPage() {
                         <td className="px-6 py-4">
                           <span
                             className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${item.rating === 'suka'
-                                ? 'bg-accent/20 text-accent-foreground'
-                                : 'bg-destructive/20 text-destructive'
+                              ? 'bg-accent/20 text-accent-foreground'
+                              : 'bg-destructive/20 text-destructive'
                               }`}
                           >
                             {item.rating === 'suka' ? (
