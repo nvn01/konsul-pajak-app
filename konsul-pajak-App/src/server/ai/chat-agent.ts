@@ -2,11 +2,51 @@
 
 import OpenAI from "openai/index.mjs";
 import { ChromaClient } from "chromadb";
+import fs from "fs";
+import path from "path";
 
 import { env } from "nvn/env";
 
+// Force read .env to bypass stale shell environment variables
+const envPath = path.join(process.cwd(), ".env");
+let apiKey = env.OPENAI_API_KEY;
+
+try {
+  if (fs.existsSync(envPath)) {
+    const envFile = fs.readFileSync(envPath, "utf8");
+    const match = envFile.match(/OPENAI_API_KEY="?([^"\n]+)"?/);
+    if (match && match[1]) {
+      apiKey = match[1];
+      console.log("[RAG] Using API Key from .env file");
+    }
+  }
+} catch (e) {
+  console.error("[RAG] Failed to read .env file directly", e);
+}
+
 const openai = new OpenAI({
-  apiKey: env.OPENAI_API_KEY,
+  apiKey: apiKey,
+});
+
+// Custom implementation since it's not exported or missing in this version
+class OpenAIEmbeddingFunction {
+  private apiKey: string;
+
+  constructor({ openai_api_key }: { openai_api_key: string }) {
+    this.apiKey = openai_api_key;
+  }
+
+  async generate(texts: string[]): Promise<number[][]> {
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: texts,
+    });
+    return response.data.map((d) => d.embedding);
+  }
+}
+
+const embedder = new OpenAIEmbeddingFunction({
+  openai_api_key: apiKey,
 });
 
 const chroma = new ChromaClient({
@@ -29,6 +69,7 @@ async function fetchContext(question: string): Promise<{
   try {
     const collection = await chroma.getOrCreateCollection({
       name: COLLECTION_NAME,
+      embeddingFunction: embedder,
     });
 
     const queryResult = await collection.query({
@@ -66,8 +107,7 @@ async function fetchContext(question: string): Promise<{
     const promptContext = sources
       .map(
         (src, idx) =>
-          `[#${idx + 1}] ${src.source}${
-            src.page ? ` (hal ${src.page})` : ""
+          `[#${idx + 1}] ${src.source}${src.page ? ` (hal ${src.page})` : ""
           }\n${src.snippet ?? ""}`,
       )
       .join("\n\n");
