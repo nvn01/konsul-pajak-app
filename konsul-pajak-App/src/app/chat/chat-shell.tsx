@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -30,6 +30,9 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [message, setMessage] = useState("");
+  const [optimisticMessages, setOptimisticMessages] = useState<Array<{ id: string; role: "user" | "assistant"; content: string }>>([]);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const utils = api.useUtils();
 
@@ -54,11 +57,28 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const isComposerBusy =
     createChatMutation.isPending || sendMessageMutation.isPending;
 
+  // Auto-scroll to bottom when messages change
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  // Scroll when messages update
+  useEffect(() => {
+    scrollToBottom();
+  }, [messagesQuery.data, optimisticMessages, scrollToBottom]);
+
   const handleSend = useCallback(async () => {
     if (!message.trim()) return;
 
     const text = message.trim();
+    const tempId = `temp-${Date.now()}`;
+
+    // Optimistic UI: Add user message immediately
+    setOptimisticMessages(prev => [...prev, { id: tempId, role: "user", content: text }]);
     setMessage("");
+
+    // Scroll to bottom after adding optimistic message
+    setTimeout(() => scrollToBottom(), 100);
 
     try {
       let targetChatId = initialChatId;
@@ -82,11 +102,16 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
         utils.chat.messages.invalidate({ chatId: targetChatId }),
         utils.chat.history.invalidate(),
       ]);
+
+      // Clear optimistic message after successful send
+      setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));
     } catch (error) {
       console.error("[Chat] Failed to send message", error);
       setMessage(text);
+      // Remove optimistic message on error
+      setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));
     }
-  }, [message, initialChatId, createChatMutation, router, sendMessageMutation, utils]);
+  }, [message, initialChatId, createChatMutation, router, sendMessageMutation, utils, scrollToBottom]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -228,8 +253,8 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
         </aside>
 
         {/* Main Chat Area */}
-        <main className="flex flex-1 flex-col">
-          <ScrollArea className="flex-1 p-6">
+        <main className="flex flex-1 flex-col overflow-hidden">
+          <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-6">
             <div className="mx-auto max-w-4xl space-y-6">
               {!hasActiveChat && (
                 <div className="text-muted-foreground py-8 text-center">
@@ -249,13 +274,21 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                   <ChatMessage key={msg.id} message={msg} />
                 ))}
 
+              {/* Optimistic messages */}
+              {optimisticMessages.map((msg) => (
+                <ChatMessage key={msg.id} message={msg} />
+              ))}
+
               {hasActiveChat && messagesQuery.isError && (
                 <div className="text-destructive py-8 text-center">
                   Gagal memuat pesan. Silakan muat ulang halaman.
                 </div>
               )}
+
+              {/* Scroll anchor */}
+              <div ref={messagesEndRef} />
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Input Area */}
           <div className="border-border bg-card border-t p-4">
