@@ -185,5 +185,59 @@ export const chatRouter = createTRPCRouter({
 
       return { success: true };
     }),
+
+  deleteChat: protectedProcedure
+    .input(chatIdInput)
+    .mutation(async ({ ctx, input }) => {
+      const chat = await ctx.db.chat.findFirst({
+        where: {
+          id: input.chatId,
+          userId: ctx.session.user.id,
+        },
+      });
+
+      if (!chat) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Chat tidak ditemukan' });
+      }
+
+      // Delete all messages and feedback for this chat
+      await ctx.db.message.deleteMany({
+        where: { chatId: chat.id },
+      });
+
+      // Delete the chat
+      await ctx.db.chat.delete({
+        where: { id: chat.id },
+      });
+
+      return { success: true };
+    }),
+
+  renameChat: protectedProcedure
+    .input(
+      z.object({
+        chatId: z.string().uuid(),
+        title: z.string().min(1, 'Judul tidak boleh kosong').max(100, 'Judul terlalu panjang'),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const chat = await ctx.db.chat.findFirst({
+        where: {
+          id: input.chatId,
+          userId: ctx.session.user.id,
+        },
+      });
+
+      if (!chat) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Chat tidak ditemukan' });
+      }
+
+      const updatedChat = await ctx.db.chat.update({
+        where: { id: chat.id },
+        data: { title: input.title.trim() },
+      });
+
+      return updatedChat;
+    }),
 });
 
