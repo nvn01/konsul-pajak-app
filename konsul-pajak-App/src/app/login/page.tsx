@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSession, signIn } from "next-auth/react";
-import { OTPInput } from "@/components/otp-input";
+import { OTPInput, type OTPInputRef } from "@/components/otp-input";
 
 type OTPFlowState = "email" | "otp";
 
@@ -22,6 +22,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { status } = useSession();
   const popupRef = useRef<Window | null>(null);
+  const otpInputRef = useRef<OTPInputRef>(null);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -144,6 +145,7 @@ export default function LoginPage() {
   const handleVerifyOTP = async (otpCode: string) => {
     setIsLoading(true);
     setError("");
+    setSuccessMessage(""); // Clear success message when verifying
 
     try {
       const response = await fetch("/api/auth/verify-otp", {
@@ -159,6 +161,8 @@ export default function LoginPage() {
       if (!response.ok) {
         setError(data.error || "Kode verifikasi salah");
         setIsLoading(false);
+        // Reset OTP input to allow user to try again
+        otpInputRef.current?.reset();
         return;
       }
 
@@ -171,6 +175,8 @@ export default function LoginPage() {
       if (result?.error) {
         setError("Gagal membuat sesi. Silakan coba lagi.");
         setIsLoading(false);
+        // Reset OTP input on session creation error
+        otpInputRef.current?.reset();
         return;
       }
 
@@ -179,6 +185,8 @@ export default function LoginPage() {
     } catch (err) {
       setError("Terjadi kesalahan. Silakan coba lagi.");
       setIsLoading(false);
+      // Reset OTP input on any error
+      otpInputRef.current?.reset();
     }
   };
 
@@ -329,6 +337,7 @@ export default function LoginPage() {
                 <div className="space-y-3">
                   <Label className="text-center block">Kode Verifikasi</Label>
                   <OTPInput
+                    ref={otpInputRef}
                     length={6}
                     onComplete={handleVerifyOTP}
                     disabled={isLoading}
