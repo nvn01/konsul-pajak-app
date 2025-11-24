@@ -8,6 +8,7 @@ import { LogOut } from "lucide-react";
 
 import { ChatMessage } from "@/components/chat-message";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -30,7 +31,14 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [message, setMessage] = useState("");
-  const [optimisticMessages, setOptimisticMessages] = useState<Array<{ id: string; role: "user" | "assistant"; content: string }>>([]);
+  const [optimisticMessages, setOptimisticMessages] = useState<Array<{
+    id: string | number;
+    role: "user" | "assistant";
+    content: string;
+    createdAt: Date;
+    sources: any[] | undefined;
+    feedback: { rating: "suka" | "tidak_suka" } | null;
+  }>>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -74,7 +82,14 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     const tempId = `temp-${Date.now()}`;
 
     // Optimistic UI: Add user message immediately
-    setOptimisticMessages(prev => [...prev, { id: tempId, role: "user", content: text }]);
+    setOptimisticMessages(prev => [...prev, {
+      id: tempId,
+      role: "user",
+      content: text,
+      createdAt: new Date(),
+      sources: undefined,
+      feedback: null
+    }]);
     setMessage("");
 
     // Scroll to bottom after adding optimistic message
@@ -129,6 +144,53 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     void signOut({ callbackUrl: "/" });
   };
 
+  const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
+  const [newChatTitle, setNewChatTitle] = useState("");
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
+
+  const deleteChatMutation = api.chat.deleteChat.useMutation({
+    onSuccess: () => {
+      void utils.chat.history.invalidate();
+      setDeletingChatId(null);
+      // If deleting current chat, redirect to main chat
+      if (deletingChatId === initialChatId) {
+        router.push("/chat");
+      }
+    },
+  });
+
+  const renameChatMutation = api.chat.renameChat.useMutation({
+    onSuccess: () => {
+      void utils.chat.history.invalidate();
+      setRenamingChatId(null);
+      setNewChatTitle("");
+    },
+  });
+
+  const handleRenameClick = (chatId: string, currentTitle: string) => {
+    setRenamingChatId(chatId);
+    setNewChatTitle(currentTitle);
+  };
+
+  const handleRenameSubmit = () => {
+    if (renamingChatId && newChatTitle.trim()) {
+      renameChatMutation.mutate({
+        chatId: renamingChatId,
+        title: newChatTitle.trim(),
+      });
+    }
+  };
+
+  const handleDeleteClick = (chatId: string) => {
+    setDeletingChatId(chatId);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deletingChatId) {
+      deleteChatMutation.mutate({ chatId: deletingChatId });
+    }
+  };
+
   const sidebarContent = useMemo(() => {
     if (historyQuery.isLoading) {
       return (
@@ -154,20 +216,68 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
       );
     }
 
-    return historyQuery.data?.map((chat) => (
-      <Link key={chat.id} href={`/chat/${chat.id}`}>
-        <div
-          className={`hover:bg-sidebar-accent rounded-lg p-3 transition-colors ${initialChatId === chat.id ? "bg-sidebar-accent" : ""
-            }`}
-        >
-          <div className="truncate text-sm font-medium">{chat.title}</div>
-          <div className="text-sidebar-foreground/60 mt-1 text-xs">
-            {new Date(chat.createdAt).toLocaleDateString("id-ID")}
+    return historyQuery.data?.map((chat) => {
+      const isSelected = initialChatId === chat.id;
+
+      return (
+        <div key={chat.id} className="group relative">
+          <Link href={`/chat/${chat.id}`} className="block">
+            <div
+              className={`rounded-lg p-3 transition-all ${isSelected
+                ? "bg-sidebar-accent/50 group-hover:bg-sidebar-accent"
+                : "hover:bg-sidebar-accent"
+                }`}
+            >
+              <div className="truncate text-sm font-medium pr-8">{chat.title}</div>
+              <div className="text-sidebar-foreground/60 mt-1 text-xs">
+                {new Date(chat.createdAt).toLocaleDateString("id-ID")}
+              </div>
+            </div>
+          </Link>
+
+          {/* Three-dot menu - appears on hover */}
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="1" />
+                    <circle cx="19" cy="12" r="1" />
+                    <circle cx="5" cy="12" r="1" />
+                  </svg>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleRenameClick(chat.id, chat.title)}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                    <path d="m15 5 4 4" />
+                  </svg>
+                  Ubah Judul
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleDeleteClick(chat.id)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                  </svg>
+                  Hapus Chat
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-      </Link>
-    ));
-  }, [historyQuery, initialChatId]);
+      );
+    });
+  }, [historyQuery, initialChatId, handleRenameClick, handleDeleteClick]);
 
   return (
     <div className="flex h-screen flex-col">
@@ -276,7 +386,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
 
               {/* Optimistic messages */}
               {optimisticMessages.map((msg) => (
-                <ChatMessage key={msg.id} message={msg} />
+                <ChatMessage key={msg.id} message={msg as any} />
               ))}
 
               {hasActiveChat && messagesQuery.isError && (
@@ -323,8 +433,70 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
           </div>
         </main>
       </div>
+
+      {/* Rename Chat Modal */}
+      {renamingChatId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Ubah Judul Chat</h3>
+            <Input
+              value={newChatTitle}
+              onChange={(e) => setNewChatTitle(e.target.value)}
+              placeholder="Masukkan judul baru..."
+              className="mb-4"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleRenameSubmit();
+                }
+              }}
+            />
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRenamingChatId(null);
+                  setNewChatTitle("");
+                }}
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={handleRenameSubmit}
+                disabled={!newChatTitle.trim() || renameChatMutation.isPending}
+              >
+                {renameChatMutation.isPending ? "Menyimpan..." : "Simpan"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Chat Confirmation */}
+      {deletingChatId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Hapus Chat</h3>
+            <p className="text-muted-foreground mb-6">
+              Apakah Anda yakin ingin menghapus chat ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setDeletingChatId(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteConfirm}
+                disabled={deleteChatMutation.isPending}
+              >
+                {deleteChatMutation.isPending ? "Menghapus..." : "Hapus"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-
