@@ -202,7 +202,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
             <Button
               type="button"
               onClick={handleCreateChat}
-              className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 w-full"
+              className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 w-full cursor-pointer"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
