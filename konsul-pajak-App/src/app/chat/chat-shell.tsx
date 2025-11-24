@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, X, Send, Loader2 } from "lucide-react";
 
 import { ChatMessage } from "@/components/chat-message";
 import { Button } from "@/components/ui/button";
@@ -442,12 +442,12 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
           {/* Input Area */}
           <div className="border-border bg-card border-t p-4">
             <form onSubmit={handleSubmit} className="mx-auto max-w-4xl">
-              <div className="flex gap-3">
+              <div className="relative">
                 <Textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Tanyakan tentang perpajakan..."
-                  className="min-h-[60px] resize-none"
+                  className="min-h-[60px] resize-none pr-14"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -458,11 +458,15 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                 />
                 <Button
                   type="submit"
-                  size="lg"
-                  className="bg-accent text-accent-foreground hover:bg-accent/90 px-8"
+                  size="icon"
+                  className="absolute right-2 bottom-2 h-9 w-9 bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg"
                   disabled={isComposerBusy || !message.trim()}
                 >
-                  {isComposerBusy ? "Mengirim..." : "Kirim"}
+                  {isComposerBusy ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
                 </Button>
               </div>
               <p className="text-muted-foreground mt-2 text-xs">
