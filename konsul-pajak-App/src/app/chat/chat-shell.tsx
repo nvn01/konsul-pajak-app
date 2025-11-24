@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 
 import { ChatMessage } from "@/components/chat-message";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [message, setMessage] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<Array<{
     id: string | number;
     role: "user" | "assistant";
@@ -144,6 +145,10 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     void signOut({ callbackUrl: "/" });
   };
 
+  const handleCloseSidebar = () => {
+    setIsSidebarOpen(false);
+  };
+
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
   const [newChatTitle, setNewChatTitle] = useState("");
   const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
@@ -221,7 +226,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
 
       return (
         <div key={chat.id} className="group relative">
-          <Link href={`/chat/${chat.id}`} className="block">
+          <Link href={`/chat/${chat.id}`} className="block" onClick={handleCloseSidebar}>
             <div
               className={`rounded-lg p-3 transition-all ${isSelected
                 ? "bg-sidebar-accent/50 group-hover:bg-sidebar-accent"
@@ -282,9 +287,22 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   return (
     <div className="flex h-screen flex-col">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground border-primary-foreground/10 border-b px-6 py-4">
+      <header className="bg-primary text-primary-foreground border-primary-foreground/10 border-b px-4 md:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {/* Hamburger menu button - visible on mobile and tablet */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden h-8 w-8 p-0"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              {isSidebarOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </Button>
             <Link href="/" className="flex items-center gap-2">
               <div className="bg-accent text-accent-foreground flex h-8 w-8 items-center justify-center rounded-md font-bold">
                 KP
@@ -330,13 +348,34 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile overlay */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={handleCloseSidebar}
+          />
+        )}
+
         {/* Sidebar */}
-        <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex w-64 flex-col border-r">
+        <aside className={`
+          bg-sidebar text-sidebar-foreground border-sidebar-border
+          flex flex-col border-r
+          fixed md:static
+          inset-y-0 left-0
+          z-50
+          w-64 md:w-64
+          transform transition-transform duration-300 ease-in-out
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          mt-[65px] md:mt-0
+        `}>
           <div className="border-sidebar-border border-b p-4">
             <Button
               type="button"
-              onClick={handleCreateChat}
+              onClick={() => {
+                handleCreateChat();
+                handleCloseSidebar();
+              }}
               className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 w-full cursor-pointer"
             >
               <svg
@@ -363,8 +402,8 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
         </aside>
 
         {/* Main Chat Area */}
-        <main className="flex flex-1 flex-col overflow-hidden">
-          <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-6">
+        <main className="flex flex-1 flex-col overflow-hidden w-full">
+          <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-4xl space-y-6">
               {!hasActiveChat && (
                 <div className="text-muted-foreground py-8 text-center">
