@@ -92,7 +92,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               variant="ghost"
               size="sm"
               onClick={() => handleFeedback('suka')}
-              className={`h-8 px-2 ${selectedFeedback === 'suka'
+              className={`h-8 px-2 cursor-pointer ${selectedFeedback === 'suka'
                 ? 'bg-accent/20 text-accent-foreground'
                 : 'text-muted-foreground hover:text-foreground'
                 }`}
@@ -107,7 +107,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               variant="ghost"
               size="sm"
               onClick={() => handleFeedback('tidak_suka')}
-              className={`h-8 px-2 ${selectedFeedback === 'tidak_suka'
+              className={`h-8 px-2 cursor-pointer ${selectedFeedback === 'tidak_suka'
                 ? 'bg-destructive/20 text-destructive'
                 : 'text-muted-foreground hover:text-foreground'
                 }`}
@@ -126,7 +126,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               onClick={() => {
                 navigator.clipboard.writeText(message.content)
               }}
-              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              className="h-8 px-2 text-muted-foreground hover:text-foreground cursor-pointer"
               title="Salin"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -141,7 +141,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                  className="h-8 px-2 text-muted-foreground hover:text-foreground cursor-pointer"
                   title="Lainnya"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -152,7 +152,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => {
+                <DropdownMenuItem className="cursor-pointer" onClick={() => {
                   // TODO: Implement feedback/report functionality
                   console.log('Report feedback for message:', message.id)
                 }}>
