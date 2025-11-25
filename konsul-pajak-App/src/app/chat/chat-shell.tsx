@@ -314,7 +314,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="relative h-10 w-10 rounded-full p-0"
+                className="relative h-10 w-10 rounded-full p-0 cursor-pointer"
               >
                 <Avatar className="h-10 w-10">
                   <AvatarImage
@@ -339,7 +339,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
+              <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Logout</span>
               </DropdownMenuItem>
@@ -459,7 +459,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                 <Button
                   type="submit"
                   size="icon"
-                  className="absolute right-2 bottom-2 h-9 w-9 bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg"
+                  className="absolute right-2 bottom-2 h-9 w-9 bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg cursor-pointer"
                   disabled={isComposerBusy || !message.trim()}
                 >
                   {isComposerBusy ? (
