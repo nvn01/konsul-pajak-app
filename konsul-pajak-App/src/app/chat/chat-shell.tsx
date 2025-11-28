@@ -407,10 +407,54 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
             <div className="mx-auto max-w-4xl space-y-6">
               {!hasActiveChat && (
                 <div className="flex items-center justify-center min-h-[calc(100vh-300px)]">
-                  <div className="text-center">
-                    <h2 className="text-2xl md:text-3xl font-semibold mb-8">
-                      Ada yang bisa saya bantu hari ini?
+                  <div className="text-center max-w-2xl mx-auto px-4">
+                    <h2 className="text-3xl md:text-4xl font-semibold mb-2">
+                      Hai, {session?.user?.name?.split(' ')[0] ?? 'Pengguna'}!
                     </h2>
+                    <p className="text-xl md:text-2xl text-muted-foreground mb-8">
+                      Ada yang bisa dibantu terkait perpajakan hari ini?
+                    </p>
+
+                    {/* Disclaimer Alert */}
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 text-left">
+                      <div className="flex gap-3">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                          <line x1="12" y1="9" x2="12" y2="13" />
+                          <line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
+                        <div>
+                          <h3 className="font-semibold text-yellow-700 dark:text-yellow-400 mb-1">
+                            Aplikasi Demo
+                          </h3>
+                          <p className="text-sm text-yellow-700/90 dark:text-yellow-400/90 mb-3">
+                            Aplikasi ini masih dalam tahap pengembangan. Jawaban yang diberikan mungkin belum 100% akurat. Kami berusaha untuk bekerja sama dengan kantor konsultan pajak untuk meningkatkan kualitas jawaban kami dengan melakukan fine-tuning dan menambahkan data training di luar dari undang-undang, seperti berita, artikel, Jurnal dan lainnya.
+                          </p>
+                          <div className="text-sm text-yellow-700/90 dark:text-yellow-400/90">
+                            <p className="font-semibold mb-2">Undang-undang yang saat ini digunakan:</p>
+                            <ul className="list-disc list-inside space-y-1 ml-2">
+                              <li>UU Nomor 6 Tahun 2023 - Penetapan Peraturan Pemerintah Pengganti UU tentang Cipta Kerja</li>
+                              <li>UU Nomor 7 Tahun 2021 - Harmonisasi Peraturan Perpajakan</li>
+                              <li>UU Nomor 11 Tahun 2020 - Cipta Kerja</li>
+                              <li>UU Nomor 16 Tahun 2009 - Ketentuan Umum dan Tata Cara Perpajakan</li>
+                              <li>UU Nomor 28 Tahun 2007 - Ketentuan Umum dan Tata Cara Perpajakan</li>
+                              <li>UU Nomor 16 Tahun 2000 - Ketentuan Umum dan Tata Cara Perpajakan</li>
+                              <li>UU Nomor 9 Tahun 1994 - Ketentuan Umum dan Tata Cara Perpajakan</li>
+                              <li>SDSN 2023 - Susunan Dalam Satu Naskah 2020</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
