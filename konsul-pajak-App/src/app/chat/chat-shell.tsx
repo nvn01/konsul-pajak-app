@@ -406,8 +406,12 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
           <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-4xl space-y-6">
               {!hasActiveChat && (
-                <div className="text-muted-foreground py-8 text-center">
-                  Mulai percakapan baru dengan mengetik pertanyaan pertama Anda.
+                <div className="flex items-center justify-center min-h-[calc(100vh-300px)]">
+                  <div className="text-center">
+                    <h2 className="text-2xl md:text-3xl font-semibold mb-8">
+                      Ada yang bisa saya bantu hari ini?
+                    </h2>
+                  </div>
                 </div>
               )}
 
