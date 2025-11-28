@@ -62,6 +62,11 @@ export type SourceCitation = {
   snippet?: string;
 };
 
+export interface MessageHistory {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 async function fetchContext(question: string): Promise<{
   promptContext: string;
   sources: SourceCitation[];
@@ -119,27 +124,50 @@ async function fetchContext(question: string): Promise<{
   }
 }
 
-export async function answerTaxQuestion(question: string): Promise<{
+export async function answerTaxQuestion(
+  question: string,
+  messageHistory: MessageHistory[] = []
+): Promise<{
   answer: string;
   sources: SourceCitation[];
 }> {
-  const { promptContext, sources } = await fetchContext(question);
+  // Configuration: Keep last 10 messages for context
+  const MAX_HISTORY = 10;
+  const recentHistory = messageHistory.slice(-MAX_HISTORY);
+
+  // Build context-aware query for retrieval
+  let retrievalQuery = question;
+  if (recentHistory.length > 0) {
+    const context = recentHistory
+      .map((m) => `${m.role === 'user' ? 'Pengguna' : 'Asisten'}: ${m.content}`)
+      .join('\n');
+    retrievalQuery = `Konteks Percakapan:\n${context}\n\nPertanyaan Terbaru: ${question}`;
+  }
+
+  const { promptContext, sources } = await fetchContext(retrievalQuery);
 
   const systemPrompt =
-    "Kamu adalah Konsul Pajak, asisten AI perpajakan Indonesia. Jawab secara formal, ringkas, tetap sopan, dan sertakan dasar hukum bila tersedia. Hindari spekulasi yang tidak berdasar.";
+    "Kamu adalah Konsul Pajak, asisten AI perpajakan Indonesia. Jawab secara formal, ringkas, tetap sopan, dan sertakan dasar hukum bila tersedia. Hindari spekulasi yang tidak berdasar. Gunakan konteks percakapan sebelumnya untuk memberikan jawaban yang lebih relevan.";
 
   const userPrompt = promptContext
     ? `Gunakan referensi berikut untuk menjawab pertanyaan perpajakan.\n\nKonteks:\n${promptContext}\n\nPertanyaan: ${question}`
     : `Tidak ada konteks tambahan yang relevan. Jawab pertanyaan terkait perpajakan Indonesia sebaik mungkin berdasarkan peraturan resmi.\n\nPertanyaan: ${question}`;
 
   try {
+    // Build messages array with conversation history
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: "system", content: systemPrompt },
+      ...recentHistory.map((msg) => ({
+        role: msg.role === 'user' ? 'user' as const : 'assistant' as const,
+        content: msg.content,
+      })),
+      { role: "user", content: userPrompt },
+    ];
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.2,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
+      messages,
     });
 
     const answer =
