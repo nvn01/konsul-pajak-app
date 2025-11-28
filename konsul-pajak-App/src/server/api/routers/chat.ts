@@ -76,6 +76,17 @@ export const chatRouter = createTRPCRouter({
 
       const trimmedMessage = input.message.trim();
 
+      // NEW: Fetch recent message history for conversational context (last 10 messages)
+      const recentMessages = await ctx.db.message.findMany({
+        where: { chatId: chat.id },
+        orderBy: { createdAt: 'asc' },
+        take: 10,
+        select: {
+          role: true,
+          content: true,
+        },
+      });
+
       const userMessage = await ctx.db.message.create({
         data: {
           chatId: chat.id,
@@ -91,7 +102,13 @@ export const chatRouter = createTRPCRouter({
         });
       }
 
-      const { answer, sources } = await answerTaxQuestion(trimmedMessage);
+      // NEW: Pass message history to AI for conversational context
+      const messageHistory = recentMessages.map((msg) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      }));
+
+      const { answer, sources } = await answerTaxQuestion(trimmedMessage, messageHistory);
 
       const assistantMessage = await ctx.db.message.create({
         data: {
