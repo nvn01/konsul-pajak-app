@@ -272,7 +272,7 @@ export default function LoginPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full cursor-pointer"
                 onClick={handleGoogleLogin}
                 disabled={isLoading}
               >
@@ -323,7 +323,7 @@ export default function LoginPage() {
 
                 <Button
                   type="submit"
-                  className="bg-accent text-accent-foreground hover:bg-accent/90 w-full font-semibold"
+                  className="bg-accent text-accent-foreground hover:bg-accent/90 w-full font-semibold cursor-pointer"
                   disabled={isLoading}
                 >
                   {isLoading ? "Mengirim..." : "Login dengan Email"}

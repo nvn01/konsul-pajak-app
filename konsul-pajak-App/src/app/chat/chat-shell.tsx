@@ -408,12 +408,9 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
               {!hasActiveChat && (
                 <div className="flex items-center justify-center min-h-[calc(100vh-300px)]">
                   <div className="text-center max-w-2xl mx-auto px-4">
-                    <h2 className="text-3xl md:text-4xl font-semibold mb-2">
-                      Hai, {session?.user?.name?.split(' ')[0] ?? 'Pengguna'}!
-                    </h2>
-                    <p className="text-xl md:text-2xl text-muted-foreground mb-8">
+                    <h2 className="text-3xl md:text-4xl font-semibold mb-8">
                       Ada yang bisa dibantu terkait perpajakan hari ini?
-                    </p>
+                    </h2>
 
                     {/* Disclaimer Alert */}
                     <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 text-left">
@@ -440,7 +437,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                             Aplikasi ini masih dalam tahap pengembangan. Jawaban yang diberikan mungkin belum 100% akurat. Kami berusaha untuk bekerja sama dengan kantor konsultan pajak untuk meningkatkan kualitas jawaban kami dengan melakukan fine-tuning dan menambahkan data training di luar dari undang-undang, seperti berita, artikel, Jurnal dan lainnya.
                           </p>
                           <div className="text-sm text-yellow-700/90 dark:text-yellow-400/90">
-                            <p className="font-semibold mb-2">Undang-undang yang saat ini digunakan:</p>
+                            <p className="font-semibold mb-2">Data yang digunakan saat ini  :</p>
                             <ul className="list-disc list-inside space-y-1 ml-2">
                               <li>UU Nomor 6 Tahun 2023 - Penetapan Peraturan Pemerintah Pengganti UU tentang Cipta Kerja</li>
                               <li>UU Nomor 7 Tahun 2021 - Harmonisasi Peraturan Perpajakan</li>
