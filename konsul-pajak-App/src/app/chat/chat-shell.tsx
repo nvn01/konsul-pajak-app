@@ -353,6 +353,72 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
               <h1 className="text-lg font-bold">Konsul Pajak</h1>
             </Link>
           </div>
+
+          {/* Navigation Items */}
+          <nav className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2">
+            <div className="flex items-center p-1 bg-background/50 backdrop-blur-sm border border-border rounded-full shadow-sm">
+              <Link
+                href="/chat"
+                className={`
+                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
+                  ${pathname === '/chat' || pathname?.startsWith('/chat/')
+                    ? 'bg-secondary text-secondary-foreground shadow-sm'
+                    : 'text-foreground hover:bg-muted/50'}
+                `}
+              >
+                Chat
+              </Link>
+
+              <Link
+                href="/hitung"
+                className={`
+                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 group
+                  ${pathname?.startsWith('/hitung')
+                    ? 'bg-secondary text-secondary-foreground shadow-sm'
+                    : 'text-foreground hover:bg-muted/50'}
+                `}
+              >
+                Hitung Pajak
+              </Link>
+
+              <Link
+                href="/analisa"
+                className={`
+                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
+                  ${pathname?.startsWith('/analisa')
+                    ? 'bg-secondary text-secondary-foreground shadow-sm'
+                    : 'text-foreground hover:bg-muted/50'}
+                `}
+              >
+                Analisa Pajak
+              </Link>
+
+              <Link
+                href="/lapor"
+                className={`
+                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
+                  ${pathname?.startsWith('/lapor')
+                    ? 'bg-secondary text-secondary-foreground shadow-sm'
+                    : 'text-foreground hover:bg-muted/50'}
+                `}
+              >
+                Lapor Pajak
+              </Link>
+
+              <Link
+                href="/laporan-pph21"
+                className={`
+                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
+                  ${pathname?.startsWith('/laporan-pph21')
+                    ? 'bg-secondary text-secondary-foreground shadow-sm'
+                    : 'text-foreground hover:bg-muted/50'}
+                `}
+              >
+                apa yak ini kira kira...
+              </Link>
+            </div>
+          </nav>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -389,7 +455,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </header>
+      </header >
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile overlay */}
@@ -593,68 +659,72 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
       </div>
 
       {/* Rename Chat Modal */}
-      {renamingChatId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">Ubah Judul Chat</h3>
-            <Input
-              value={newChatTitle}
-              onChange={(e) => setNewChatTitle(e.target.value)}
-              placeholder="Masukkan judul baru..."
-              className="mb-4"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleRenameSubmit();
-                }
-              }}
-            />
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setRenamingChatId(null);
-                  setNewChatTitle("");
+      {
+        renamingChatId && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold mb-4">Ubah Judul Chat</h3>
+              <Input
+                value={newChatTitle}
+                onChange={(e) => setNewChatTitle(e.target.value)}
+                placeholder="Masukkan judul baru..."
+                className="mb-4"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleRenameSubmit();
+                  }
                 }}
-              >
-                Batal
-              </Button>
-              <Button
-                onClick={handleRenameSubmit}
-                disabled={!newChatTitle.trim() || renameChatMutation.isPending}
-              >
-                {renameChatMutation.isPending ? "Menyimpan..." : "Simpan"}
-              </Button>
+              />
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setRenamingChatId(null);
+                    setNewChatTitle("");
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleRenameSubmit}
+                  disabled={!newChatTitle.trim() || renameChatMutation.isPending}
+                >
+                  {renameChatMutation.isPending ? "Menyimpan..." : "Simpan"}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Delete Chat Confirmation */}
-      {deletingChatId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">Hapus Chat</h3>
-            <p className="text-muted-foreground mb-6">
-              Apakah Anda yakin ingin menghapus chat ini? Tindakan ini tidak dapat dibatalkan.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setDeletingChatId(null)}
-              >
-                Batal
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteConfirm}
-                disabled={deleteChatMutation.isPending}
-              >
-                {deleteChatMutation.isPending ? "Menghapus..." : "Hapus"}
-              </Button>
+      {
+        deletingChatId && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold mb-4">Hapus Chat</h3>
+              <p className="text-muted-foreground mb-6">
+                Apakah Anda yakin ingin menghapus chat ini? Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeletingChatId(null)}
+                >
+                  Batal
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteConfirm}
+                  disabled={deleteChatMutation.isPending}
+                >
+                  {deleteChatMutation.isPending ? "Menghapus..." : "Hapus"}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }
