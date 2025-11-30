@@ -362,12 +362,11 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
           bg-sidebar text-sidebar-foreground border-sidebar-border
           flex flex-col border-r
           fixed md:static
-          inset-y-0 left-0
+          top-[65px] md:top-0 bottom-0 left-0
           z-50
           w-64 md:w-64
           transform transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          mt-[65px] md:mt-0
         `}>
           <div className="border-sidebar-border border-b p-4">
             <Button
@@ -396,7 +395,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
             </Button>
           </div>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="space-y-1 p-3">{sidebarContent}</div>
           </ScrollArea>
         </aside>
