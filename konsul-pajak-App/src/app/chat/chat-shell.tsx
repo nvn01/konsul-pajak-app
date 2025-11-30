@@ -32,6 +32,10 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const { data: session } = useSession();
   const [message, setMessage] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Track the current chat ID independently from the prop
+  const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId);
+
   const [optimisticMessages, setOptimisticMessages] = useState<Array<{
     id: string | number;
     role: "user" | "assistant";
@@ -43,16 +47,24 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Track if we're in the process of creating a new chat (to avoid showing "Loading pesan...")
+  const isCreatingNewChat = useRef(false);
+
   const utils = api.useUtils();
+
+  // Sync currentChatId with initialChatId when it changes (e.g., navigation via sidebar)
+  useEffect(() => {
+    setCurrentChatId(initialChatId);
+  }, [initialChatId]);
 
   const historyQuery = api.chat.history.useQuery(undefined, {
     refetchOnWindowFocus: false,
   });
 
-  const hasActiveChat = Boolean(initialChatId);
+  const hasActiveChat = Boolean(currentChatId);
 
   const messagesQuery = api.chat.messages.useQuery(
-    { chatId: initialChatId ?? "" },
+    { chatId: currentChatId ?? "" },
     {
       enabled: hasActiveChat,
       refetchOnReconnect: true,
@@ -78,6 +90,23 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     scrollToBottom();
   }, [messagesQuery.data, optimisticMessages, scrollToBottom]);
 
+  // Clear optimistic messages when chat changes
+  useEffect(() => {
+    // Only clear if we're NOT creating a new chat (e.g. switching via sidebar)
+    if (!isCreatingNewChat.current) {
+      setOptimisticMessages([]);
+    }
+  }, [currentChatId]);
+
+  // Clear optimistic messages when real messages are loaded
+  useEffect(() => {
+    if (messagesQuery.isSuccess && messagesQuery.data && messagesQuery.data.length > 0) {
+      setOptimisticMessages([]);
+      // Reset the flag once messages are loaded
+      isCreatingNewChat.current = false;
+    }
+  }, [messagesQuery.isSuccess, messagesQuery.data]);
+
   const handleSend = useCallback(async () => {
     if (!message.trim()) return;
 
@@ -99,12 +128,18 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     setTimeout(() => scrollToBottom(), 100);
 
     try {
-      let targetChatId = initialChatId;
+      let targetChatId = currentChatId;
 
       if (!targetChatId) {
+        // Mark that we're creating a new chat
+        isCreatingNewChat.current = true;
+
         const newChat = await createChatMutation.mutateAsync();
         targetChatId = newChat.id;
-        router.replace(`/chat/${newChat.id}`);
+        // Update local state to track the new chat ID
+        setCurrentChatId(targetChatId);
+        // Use native History API to update URL without page reload
+        window.history.replaceState(null, '', `/chat/${newChat.id}`);
       }
 
       if (!targetChatId) {
@@ -121,15 +156,17 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
         utils.chat.history.invalidate(),
       ]);
 
-      // Clear optimistic message after successful send
-      setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));
+      // Don't clear optimistic messages here - let them be replaced by real messages
+      // This keeps the user's message visible while AI is thinking
     } catch (error) {
       console.error("[Chat] Failed to send message", error);
       setMessage(text);
       // Remove optimistic message on error
       setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));
+      // Reset flag on error
+      isCreatingNewChat.current = false;
     }
-  }, [message, initialChatId, createChatMutation, router, sendMessageMutation, utils, scrollToBottom]);
+  }, [message, currentChatId, createChatMutation, sendMessageMutation, utils, scrollToBottom]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -137,10 +174,14 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   };
 
   const handleCreateChat = () => {
-    if (pathname !== "/chat") {
-      router.push("/chat");
-    }
+    // Reset to new chat state
+    setCurrentChatId(null);
+    setOptimisticMessages([]);
     setMessage("");
+    // Use window.history to avoid page reload
+    if (pathname !== "/chat") {
+      window.history.pushState(null, '', '/chat');
+    }
   };
 
   const handleLogout = () => {
@@ -160,7 +201,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
       void utils.chat.history.invalidate();
       setDeletingChatId(null);
       // If deleting current chat, redirect to main chat
-      if (deletingChatId === initialChatId) {
+      if (deletingChatId === currentChatId) {
         router.push("/chat");
       }
     },
@@ -224,7 +265,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     }
 
     return historyQuery.data?.map((chat) => {
-      const isSelected = initialChatId === chat.id;
+      const isSelected = currentChatId === chat.id;
 
       return (
         <div key={chat.id} className="group relative">
@@ -284,7 +325,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
         </div>
       );
     });
-  }, [historyQuery, initialChatId, handleRenameClick, handleDeleteClick]);
+  }, [historyQuery, currentChatId, handleRenameClick, handleDeleteClick]);
 
   return (
     <div className="flex h-screen flex-col">
@@ -456,7 +497,8 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                 </div>
               )}
 
-              {hasActiveChat && messagesQuery.isLoading && (
+              {/* Only show loading if we're switching chats (not creating a new one) */}
+              {hasActiveChat && messagesQuery.isLoading && !isCreatingNewChat.current && (
                 <div className="text-muted-foreground py-8 text-center">
                   Loading pesan...
                 </div>
