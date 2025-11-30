@@ -97,3 +97,6 @@ yarn-error.log*
 
 # SSL certificates
 *.pem
+
+# Reference folder
+reference/
