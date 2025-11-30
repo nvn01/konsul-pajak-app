@@ -70,19 +70,23 @@ export function ChatMessage({ message }: ChatMessageProps) {
   }
 
   return (
-    <div className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[80%] space-y-2 ${message.role === 'user' ? 'order-2' : ''}`}>
+    <div className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      {/* AI Avatar - Left side for assistant */}
+      {message.role === 'assistant' && (
+        <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+          AI
+        </div>
+      )}
+
+      <div className="max-w-[80%] space-y-2">
         {/* Message Bubble */}
         <div
-          className={`rounded-lg p-4 ${message.role === 'user'
+          className={`rounded-2xl px-4 py-3 text-sm shadow-sm ${message.role === 'user'
             ? 'bg-primary text-primary-foreground'
             : 'bg-card border border-border'
             }`}
         >
-          <div className="text-sm font-medium mb-2">
-            {message.role === 'user' ? 'Anda' : 'Asisten Pajak'}
-          </div>
-          <div className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</div>
+          <div className="leading-relaxed whitespace-pre-wrap">{message.content}</div>
         </div>
 
         {/* Feedback Buttons - Only for assistant messages */}
@@ -186,6 +190,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </div>
         )}
       </div>
+
+      {/* User Avatar - Right side for user */}
+      {message.role === 'user' && (
+        <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+          U
+        </div>
+      )}
     </div>
   )
 }

@@ -66,6 +66,8 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const isComposerBusy =
     createChatMutation.isPending || sendMessageMutation.isPending;
 
+  const isAIThinking = sendMessageMutation.isPending;
+
   // Auto-scroll to bottom when messages change
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -368,14 +370,14 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
           transform transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
-          <div className="border-sidebar-border border-b p-4">
-            <Button
+          <div className="border-sidebar-border border-b p-3">
+            <button
               type="button"
               onClick={() => {
                 handleCreateChat();
                 handleCloseSidebar();
               }}
-              className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 w-full cursor-pointer"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-sidebar-primary px-4 py-2.5 text-sm font-medium text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring cursor-pointer"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -387,12 +389,11 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="mr-2"
               >
                 <path d="M12 5v14M5 12h14" />
               </svg>
               Percakapan Baru
-            </Button>
+            </button>
           </div>
 
           <ScrollArea className="flex-1 min-h-0">
@@ -472,6 +473,25 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                 <ChatMessage key={msg.id} message={msg as any} />
               ))}
 
+              {/* AI Thinking Indicator */}
+              {isAIThinking && (
+                <div className="flex gap-3 justify-start">
+                  <div className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                    AI
+                  </div>
+                  <div className="max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm bg-card border border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]"></div>
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]"></div>
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground"></div>
+                      </div>
+                      <span className="text-sm text-muted-foreground">AI sedang berpikir...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {hasActiveChat && messagesQuery.isError && (
                 <div className="text-destructive py-8 text-center">
                   Gagal memuat pesan. Silakan muat ulang halaman.
@@ -486,36 +506,45 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
           {/* Input Area */}
           <div className="border-border bg-card border-t p-4">
             <form onSubmit={handleSubmit} className="mx-auto max-w-4xl">
-              <div className="relative">
-                <Textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Tanyakan tentang perpajakan..."
-                  className="min-h-[60px] resize-none pr-14"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void handleSend();
-                    }
-                  }}
-                  disabled={isComposerBusy}
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  className="absolute right-2 bottom-2 h-9 w-9 bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg cursor-pointer"
-                  disabled={isComposerBusy || !message.trim()}
-                >
-                  {isComposerBusy ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Send className="h-5 w-5" />
-                  )}
-                </Button>
+              <div className="flex flex-col rounded-2xl border border-border bg-card shadow-sm transition-all duration-200 p-3">
+                <div className="flex-1 relative">
+                  <Textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Tanyakan tentang perpajakan..."
+                    className="min-h-[40px] resize-none border-0 bg-transparent px-0 py-2 text-sm outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        void handleSend();
+                      }
+                    }}
+                    disabled={isComposerBusy}
+                  />
+                </div>
+                <div className="flex items-center justify-end mt-2">
+                  <button
+                    type="submit"
+                    disabled={isComposerBusy || !message.trim()}
+                    className="inline-flex shrink-0 items-center gap-2 rounded-full bg-accent px-3 py-2 text-sm font-medium text-accent-foreground shadow-sm transition-all hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isComposerBusy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
-              <p className="text-muted-foreground mt-2 text-xs">
-                Tekan Enter untuk kirim, Shift+Enter untuk baris baru
-              </p>
+              <div className="mt-2 px-1 text-[11px] text-muted-foreground">
+                Tekan{" "}
+                <kbd className="rounded border border-border bg-muted px-1 text-[10px]">Enter</kbd>{" "}
+                untuk kirim ·{" "}
+                <kbd className="rounded border border-border bg-muted px-1 text-[10px]">Shift</kbd>
+                +
+                <kbd className="rounded border border-border bg-muted px-1 text-[10px]">Enter</kbd>{" "}
+                untuk baris baru
+              </div>
             </form>
           </div>
         </main>
