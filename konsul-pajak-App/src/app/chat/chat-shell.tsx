@@ -276,7 +276,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                 : "hover:bg-sidebar-accent"
                 }`}
             >
-              <div className="truncate text-sm font-medium pr-8">{chat.title}</div>
+              <div className="truncate text-sm font-medium pr-8 max-w-[180px]">{chat.title}</div>
               <div className="text-sidebar-foreground/60 mt-1 text-xs">
                 {new Date(chat.createdAt).toLocaleDateString("id-ID")}
               </div>
