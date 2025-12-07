@@ -553,7 +553,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                               <li>UU Nomor 28 Tahun 2007 - Ketentuan Umum dan Tata Cara Perpajakan</li>
                               <li>UU Nomor 16 Tahun 2000 - Ketentuan Umum dan Tata Cara Perpajakan</li>
                               <li>UU Nomor 9 Tahun 1994 - Ketentuan Umum dan Tata Cara Perpajakan</li>
-                              <li>SDSN 2023 - Susunan Dalam Satu Naskah 2020</li>
+                              <li>SDSN 202 - Susunan Dalam Satu Naskah 2025</li>
                             </ul>
                           </div>
                         </div>
