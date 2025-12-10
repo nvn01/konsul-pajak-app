@@ -32,6 +32,10 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const { data: session } = useSession();
   const [message, setMessage] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Track the current chat ID independently from the prop
+  const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId);
+
   const [optimisticMessages, setOptimisticMessages] = useState<Array<{
     id: string | number;
     role: "user" | "assistant";
@@ -43,16 +47,24 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Track if we're in the process of creating a new chat (to avoid showing "Loading pesan...")
+  const isCreatingNewChat = useRef(false);
+
   const utils = api.useUtils();
+
+  // Sync currentChatId with initialChatId when it changes (e.g., navigation via sidebar)
+  useEffect(() => {
+    setCurrentChatId(initialChatId);
+  }, [initialChatId]);
 
   const historyQuery = api.chat.history.useQuery(undefined, {
     refetchOnWindowFocus: false,
   });
 
-  const hasActiveChat = Boolean(initialChatId);
+  const hasActiveChat = Boolean(currentChatId);
 
   const messagesQuery = api.chat.messages.useQuery(
-    { chatId: initialChatId ?? "" },
+    { chatId: currentChatId ?? "" },
     {
       enabled: hasActiveChat,
       refetchOnReconnect: true,
@@ -66,6 +78,8 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const isComposerBusy =
     createChatMutation.isPending || sendMessageMutation.isPending;
 
+  const isAIThinking = sendMessageMutation.isPending;
+
   // Auto-scroll to bottom when messages change
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,6 +89,23 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messagesQuery.data, optimisticMessages, scrollToBottom]);
+
+  // Clear optimistic messages when chat changes
+  useEffect(() => {
+    // Only clear if we're NOT creating a new chat (e.g. switching via sidebar)
+    if (!isCreatingNewChat.current) {
+      setOptimisticMessages([]);
+    }
+  }, [currentChatId]);
+
+  // Clear optimistic messages when real messages are loaded
+  useEffect(() => {
+    if (messagesQuery.isSuccess && messagesQuery.data && messagesQuery.data.length > 0) {
+      setOptimisticMessages([]);
+      // Reset the flag once messages are loaded
+      isCreatingNewChat.current = false;
+    }
+  }, [messagesQuery.isSuccess, messagesQuery.data]);
 
   const handleSend = useCallback(async () => {
     if (!message.trim()) return;
@@ -97,12 +128,18 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     setTimeout(() => scrollToBottom(), 100);
 
     try {
-      let targetChatId = initialChatId;
+      let targetChatId = currentChatId;
 
       if (!targetChatId) {
+        // Mark that we're creating a new chat
+        isCreatingNewChat.current = true;
+
         const newChat = await createChatMutation.mutateAsync();
         targetChatId = newChat.id;
-        router.replace(`/chat/${newChat.id}`);
+        // Update local state to track the new chat ID
+        setCurrentChatId(targetChatId);
+        // Use native History API to update URL without page reload
+        window.history.replaceState(null, '', `/chat/${newChat.id}`);
       }
 
       if (!targetChatId) {
@@ -119,15 +156,17 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
         utils.chat.history.invalidate(),
       ]);
 
-      // Clear optimistic message after successful send
-      setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));
+      // Don't clear optimistic messages here - let them be replaced by real messages
+      // This keeps the user's message visible while AI is thinking
     } catch (error) {
       console.error("[Chat] Failed to send message", error);
       setMessage(text);
       // Remove optimistic message on error
       setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));
+      // Reset flag on error
+      isCreatingNewChat.current = false;
     }
-  }, [message, initialChatId, createChatMutation, router, sendMessageMutation, utils, scrollToBottom]);
+  }, [message, currentChatId, createChatMutation, sendMessageMutation, utils, scrollToBottom]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -135,10 +174,14 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   };
 
   const handleCreateChat = () => {
-    if (pathname !== "/chat") {
-      router.push("/chat");
-    }
+    // Reset to new chat state
+    setCurrentChatId(null);
+    setOptimisticMessages([]);
     setMessage("");
+    // Use window.history to avoid page reload
+    if (pathname !== "/chat") {
+      window.history.pushState(null, '', '/chat');
+    }
   };
 
   const handleLogout = () => {
@@ -158,7 +201,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
       void utils.chat.history.invalidate();
       setDeletingChatId(null);
       // If deleting current chat, redirect to main chat
-      if (deletingChatId === initialChatId) {
+      if (deletingChatId === currentChatId) {
         router.push("/chat");
       }
     },
@@ -222,7 +265,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     }
 
     return historyQuery.data?.map((chat) => {
-      const isSelected = initialChatId === chat.id;
+      const isSelected = currentChatId === chat.id;
 
       return (
         <div key={chat.id} className="group relative">
@@ -233,7 +276,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                 : "hover:bg-sidebar-accent"
                 }`}
             >
-              <div className="truncate text-sm font-medium pr-8">{chat.title}</div>
+              <div className="truncate text-sm font-medium pr-8 max-w-[180px]">{chat.title}</div>
               <div className="text-sidebar-foreground/60 mt-1 text-xs">
                 {new Date(chat.createdAt).toLocaleDateString("id-ID")}
               </div>
@@ -282,7 +325,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
         </div>
       );
     });
-  }, [historyQuery, initialChatId, handleRenameClick, handleDeleteClick]);
+  }, [historyQuery, currentChatId, handleRenameClick, handleDeleteClick]);
 
   return (
     <div className="flex h-screen flex-col">
@@ -310,6 +353,72 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
               <h1 className="text-lg font-bold">Konsul Pajak</h1>
             </Link>
           </div>
+
+          {/* Navigation Items */}
+          <nav className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2">
+            <div className="flex items-center p-1 bg-background/50 backdrop-blur-sm border border-border rounded-full shadow-sm">
+              <Link
+                href="/chat"
+                className={`
+                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
+                  ${pathname === '/chat' || pathname?.startsWith('/chat/')
+                    ? 'bg-secondary text-secondary-foreground shadow-sm'
+                    : 'text-foreground hover:bg-muted/50'}
+                `}
+              >
+                Chat
+              </Link>
+
+              <Link
+                href="/hitung"
+                className={`
+                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 group
+                  ${pathname?.startsWith('/hitung')
+                    ? 'bg-secondary text-secondary-foreground shadow-sm'
+                    : 'text-foreground hover:bg-muted/50'}
+                `}
+              >
+                Hitung Pajak
+              </Link>
+
+              <Link
+                href="/analisa"
+                className={`
+                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
+                  ${pathname?.startsWith('/analisa')
+                    ? 'bg-secondary text-secondary-foreground shadow-sm'
+                    : 'text-foreground hover:bg-muted/50'}
+                `}
+              >
+                Analisa Pajak
+              </Link>
+
+              <Link
+                href="/lapor"
+                className={`
+                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
+                  ${pathname?.startsWith('/lapor')
+                    ? 'bg-secondary text-secondary-foreground shadow-sm'
+                    : 'text-foreground hover:bg-muted/50'}
+                `}
+              >
+                Lapor Pajak
+              </Link>
+
+              <Link
+                href="/laporan-pph21"
+                className={`
+                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
+                  ${pathname?.startsWith('/laporan-pph21')
+                    ? 'bg-secondary text-secondary-foreground shadow-sm'
+                    : 'text-foreground hover:bg-muted/50'}
+                `}
+              >
+                apa yak ini kira kira...
+              </Link>
+            </div>
+          </nav>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -346,7 +455,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </header>
+      </header >
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile overlay */}
@@ -368,14 +477,14 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
           transform transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
-          <div className="border-sidebar-border border-b p-4">
-            <Button
+          <div className="border-sidebar-border border-b p-3">
+            <button
               type="button"
               onClick={() => {
                 handleCreateChat();
                 handleCloseSidebar();
               }}
-              className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 w-full cursor-pointer"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-sidebar-primary px-4 py-2.5 text-sm font-medium text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring cursor-pointer"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -387,12 +496,11 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="mr-2"
               >
                 <path d="M12 5v14M5 12h14" />
               </svg>
               Percakapan Baru
-            </Button>
+            </button>
           </div>
 
           <ScrollArea className="flex-1 min-h-0">
@@ -445,7 +553,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                               <li>UU Nomor 28 Tahun 2007 - Ketentuan Umum dan Tata Cara Perpajakan</li>
                               <li>UU Nomor 16 Tahun 2000 - Ketentuan Umum dan Tata Cara Perpajakan</li>
                               <li>UU Nomor 9 Tahun 1994 - Ketentuan Umum dan Tata Cara Perpajakan</li>
-                              <li>SDSN 2023 - Susunan Dalam Satu Naskah 2020</li>
+                              <li>SDSN 202 - Susunan Dalam Satu Naskah 2025</li>
                             </ul>
                           </div>
                         </div>
@@ -455,7 +563,8 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                 </div>
               )}
 
-              {hasActiveChat && messagesQuery.isLoading && (
+              {/* Only show loading if we're switching chats (not creating a new one) */}
+              {hasActiveChat && messagesQuery.isLoading && !isCreatingNewChat.current && (
                 <div className="text-muted-foreground py-8 text-center">
                   Loading pesan...
                 </div>
@@ -472,6 +581,25 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                 <ChatMessage key={msg.id} message={msg as any} />
               ))}
 
+              {/* AI Thinking Indicator */}
+              {isAIThinking && (
+                <div className="flex gap-3 justify-start">
+                  <div className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                    AI
+                  </div>
+                  <div className="max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm bg-card border border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]"></div>
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]"></div>
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground"></div>
+                      </div>
+                      <span className="text-sm text-muted-foreground">AI sedang berpikir...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {hasActiveChat && messagesQuery.isError && (
                 <div className="text-destructive py-8 text-center">
                   Gagal memuat pesan. Silakan muat ulang halaman.
@@ -486,104 +614,117 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
           {/* Input Area */}
           <div className="border-border bg-card border-t p-4">
             <form onSubmit={handleSubmit} className="mx-auto max-w-4xl">
-              <div className="relative">
-                <Textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Tanyakan tentang perpajakan..."
-                  className="min-h-[60px] resize-none pr-14"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void handleSend();
-                    }
-                  }}
-                  disabled={isComposerBusy}
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  className="absolute right-2 bottom-2 h-9 w-9 bg-accent text-accent-foreground hover:bg-accent/90 rounded-lg cursor-pointer"
-                  disabled={isComposerBusy || !message.trim()}
-                >
-                  {isComposerBusy ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Send className="h-5 w-5" />
-                  )}
-                </Button>
+              <div className="flex flex-col rounded-2xl border border-border bg-card shadow-sm transition-all duration-200 p-3">
+                <div className="flex-1 relative">
+                  <Textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Tanyakan tentang perpajakan..."
+                    className="min-h-[40px] resize-none border-0 bg-transparent px-0 py-2 text-sm outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        void handleSend();
+                      }
+                    }}
+                    disabled={isComposerBusy}
+                  />
+                </div>
+                <div className="flex items-center justify-end mt-2">
+                  <button
+                    type="submit"
+                    disabled={isComposerBusy || !message.trim()}
+                    className="inline-flex shrink-0 items-center gap-2 rounded-full bg-accent px-3 py-2 text-sm font-medium text-accent-foreground shadow-sm transition-all hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isComposerBusy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
-              <p className="text-muted-foreground mt-2 text-xs">
-                Tekan Enter untuk kirim, Shift+Enter untuk baris baru
-              </p>
+              <div className="mt-2 px-1 text-[11px] text-muted-foreground">
+                Tekan{" "}
+                <kbd className="rounded border border-border bg-muted px-1 text-[10px]">Enter</kbd>{" "}
+                untuk kirim ·{" "}
+                <kbd className="rounded border border-border bg-muted px-1 text-[10px]">Shift</kbd>
+                +
+                <kbd className="rounded border border-border bg-muted px-1 text-[10px]">Enter</kbd>{" "}
+                untuk baris baru
+              </div>
             </form>
           </div>
         </main>
       </div>
 
       {/* Rename Chat Modal */}
-      {renamingChatId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">Ubah Judul Chat</h3>
-            <Input
-              value={newChatTitle}
-              onChange={(e) => setNewChatTitle(e.target.value)}
-              placeholder="Masukkan judul baru..."
-              className="mb-4"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleRenameSubmit();
-                }
-              }}
-            />
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setRenamingChatId(null);
-                  setNewChatTitle("");
+      {
+        renamingChatId && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold mb-4">Ubah Judul Chat</h3>
+              <Input
+                value={newChatTitle}
+                onChange={(e) => setNewChatTitle(e.target.value)}
+                placeholder="Masukkan judul baru..."
+                className="mb-4"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleRenameSubmit();
+                  }
                 }}
-              >
-                Batal
-              </Button>
-              <Button
-                onClick={handleRenameSubmit}
-                disabled={!newChatTitle.trim() || renameChatMutation.isPending}
-              >
-                {renameChatMutation.isPending ? "Menyimpan..." : "Simpan"}
-              </Button>
+              />
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setRenamingChatId(null);
+                    setNewChatTitle("");
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleRenameSubmit}
+                  disabled={!newChatTitle.trim() || renameChatMutation.isPending}
+                >
+                  {renameChatMutation.isPending ? "Menyimpan..." : "Simpan"}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Delete Chat Confirmation */}
-      {deletingChatId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">Hapus Chat</h3>
-            <p className="text-muted-foreground mb-6">
-              Apakah Anda yakin ingin menghapus chat ini? Tindakan ini tidak dapat dibatalkan.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setDeletingChatId(null)}
-              >
-                Batal
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteConfirm}
-                disabled={deleteChatMutation.isPending}
-              >
-                {deleteChatMutation.isPending ? "Menghapus..." : "Hapus"}
-              </Button>
+      {
+        deletingChatId && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold mb-4">Hapus Chat</h3>
+              <p className="text-muted-foreground mb-6">
+                Apakah Anda yakin ingin menghapus chat ini? Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeletingChatId(null)}
+                >
+                  Batal
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteConfirm}
+                  disabled={deleteChatMutation.isPending}
+                >
+                  {deleteChatMutation.isPending ? "Menghapus..." : "Hapus"}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }
