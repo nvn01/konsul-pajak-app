@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { signIn, useSession } from 'next-auth/react'
 
-export default function GoogleSignInPopup() {
+function GoogleSignInContent() {
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') ?? '/chat'
@@ -43,6 +43,14 @@ export default function GoogleSignInPopup() {
     <div className="flex h-screen w-screen items-center justify-center bg-white text-sm text-muted-foreground">
       Menghubungkan ke Google...
     </div>
+  )
+}
+
+export default function GoogleSignInPopup() {
+  return (
+    <Suspense fallback={<div className="flex h-screen w-screen items-center justify-center">Loading...</div>}>
+      <GoogleSignInContent />
+    </Suspense>
   )
 }
 

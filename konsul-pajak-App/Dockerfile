@@ -6,8 +6,9 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package files
+# Copy package files and prisma schema
 COPY package.json package-lock.json* ./
+COPY prisma ./prisma
 RUN npm ci
 
 # Rebuild the source code only when needed
@@ -15,6 +16,10 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Skip environment validation during build and provide placeholder for OpenAI
+ENV SKIP_ENV_VALIDATION=1
+ENV OPENAI_API_KEY="sk-placeholder-build-key"
 
 # Build the application
 RUN npm run build
