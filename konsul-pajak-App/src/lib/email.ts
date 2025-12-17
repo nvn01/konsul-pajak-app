@@ -25,7 +25,7 @@ export async function sendOTPEmail(email: string, code: string): Promise<void> {
   const resend = getResendClient();
   try {
     const { data, error } = await resend.emails.send({
-      from: "Konsul Pajak <onboarding@resend.dev>",
+      from: "Konsul Pajak <noreply@novn.my.id>",
       to: [email],
       subject: "Kode Verifikasi Login - Konsul Pajak",
       html: `
