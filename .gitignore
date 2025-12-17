@@ -1,3 +1,7 @@
+# Docker Compose and OS files
+docker-compose.yml
+desktop.ini
+
 # Environment variables
 .env
 .env.local
