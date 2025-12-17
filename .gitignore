@@ -104,3 +104,5 @@ yarn-error.log*
 
 # Reference folder
 reference/
+
+.gitignore
