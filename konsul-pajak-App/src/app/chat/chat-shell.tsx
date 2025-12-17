@@ -354,70 +354,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
             </Link>
           </div>
 
-          {/* Navigation Items */}
-          <nav className="hidden md:flex items-center absolute left-1/2 -translate-x-1/2">
-            <div className="flex items-center p-1 bg-background/50 backdrop-blur-sm border border-border rounded-full shadow-sm">
-              <Link
-                href="/chat"
-                className={`
-                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
-                  ${pathname === '/chat' || pathname?.startsWith('/chat/')
-                    ? 'bg-secondary text-secondary-foreground shadow-sm'
-                    : 'text-foreground hover:bg-muted/50'}
-                `}
-              >
-                Chat
-              </Link>
 
-              <Link
-                href="/hitung"
-                className={`
-                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 group
-                  ${pathname?.startsWith('/hitung')
-                    ? 'bg-secondary text-secondary-foreground shadow-sm'
-                    : 'text-foreground hover:bg-muted/50'}
-                `}
-              >
-                Hitung Pajak
-              </Link>
-
-              <Link
-                href="/analisa"
-                className={`
-                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
-                  ${pathname?.startsWith('/analisa')
-                    ? 'bg-secondary text-secondary-foreground shadow-sm'
-                    : 'text-foreground hover:bg-muted/50'}
-                `}
-              >
-                Analisa Pajak
-              </Link>
-
-              <Link
-                href="/lapor"
-                className={`
-                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
-                  ${pathname?.startsWith('/lapor')
-                    ? 'bg-secondary text-secondary-foreground shadow-sm'
-                    : 'text-foreground hover:bg-muted/50'}
-                `}
-              >
-                Lapor Pajak
-              </Link>
-
-              <Link
-                href="/laporan-pph21"
-                className={`
-                  relative px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200
-                  ${pathname?.startsWith('/laporan-pph21')
-                    ? 'bg-secondary text-secondary-foreground shadow-sm'
-                    : 'text-foreground hover:bg-muted/50'}
-                `}
-              >
-                apa yak ini kira kira...
-              </Link>
-            </div>
-          </nav>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
