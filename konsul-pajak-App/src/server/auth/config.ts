@@ -25,6 +25,7 @@ declare module "next-auth" {
  * Opsi konfigurasi NextAuth.js
  */
 export const authConfig: NextAuthConfig = {
+  trustHost: true,
   session: {
     strategy: "jwt",
   },
