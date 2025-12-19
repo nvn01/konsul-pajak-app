@@ -475,10 +475,10 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                         </svg>
                         <div>
                           <h3 className="font-semibold text-yellow-700 dark:text-yellow-400 mb-1">
-                            Aplikasi Demo
+                            Aplikasi Demo Untuk Dosen Perpajakan di Universitas Pamulang
                           </h3>
                           <p className="text-sm text-yellow-700/90 dark:text-yellow-400/90 mb-3">
-                            Aplikasi ini masih dalam tahap pengembangan. Jawaban yang diberikan mungkin belum 100% akurat. Kami berusaha untuk bekerja sama dengan kantor konsultan pajak untuk meningkatkan kualitas jawaban kami dengan melakukan fine-tuning dan menambahkan data training di luar dari undang-undang, seperti berita, artikel, Jurnal dan lainnya.
+                            Aplikasi ini masih dalam tahap pengembangan. Jawaban yang diberikan mungkin belum 100% akurat.
                           </p>
                           <div className="text-sm text-yellow-700/90 dark:text-yellow-400/90">
                             <p className="font-semibold mb-2">Data yang digunakan saat ini  :</p>
