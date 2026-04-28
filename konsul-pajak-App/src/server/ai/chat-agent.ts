@@ -1,60 +1,34 @@
 "use server";
 
-import { VertexAI, type GenerativeModel, type Tool } from "@google-cloud/vertexai";
+import { GoogleGenAI } from "@google/genai";
 import { env } from "nvn/env";
 
-// ─── Configuration ────────────────────────────────────────────────────
-const GEMINI_MODEL = "gemini-2.0-flash";
+// ---------------------------------------------------------------------------
+// Vertex AI client — lazy-initialized to avoid build-time auth errors.
+// Authenticates via GOOGLE_APPLICATION_CREDENTIALS env var at runtime.
+// ---------------------------------------------------------------------------
+let _ai: GoogleGenAI | null = null;
 
-// ─── Lazy-initialized Vertex AI client ────────────────────────────────
-// Must be lazy to avoid crashing during Next.js build (no env vars available)
-let _model: GenerativeModel | null = null;
-let _groundingTool: Tool | null = null;
-
-function getModel(): GenerativeModel {
-  if (!_model) {
-    const vertexAI = new VertexAI({
+function getAI(): GoogleGenAI {
+  if (!_ai) {
+    _ai = new GoogleGenAI({
+      vertexai: true,
       project: env.GCP_PROJECT_ID,
       location: env.GCP_LOCATION,
-      googleAuthOptions: {
-        keyFilename: env.GOOGLE_APPLICATION_CREDENTIALS,
-      },
-    });
-
-    _model = vertexAI.getGenerativeModel({
-      model: GEMINI_MODEL,
-      systemInstruction: {
-        role: "system",
-        parts: [
-          {
-            text: "Kamu adalah Konsul Pajak, asisten AI perpajakan Indonesia. Jawab secara formal, ringkas, tetap sopan, dan sertakan dasar hukum bila tersedia. Hindari spekulasi yang tidak berdasar. Gunakan konteks percakapan sebelumnya untuk memberikan jawaban yang lebih relevan. Jawab dalam Bahasa Indonesia.",
-          },
-        ],
-      },
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 2048,
-      },
     });
   }
-  return _model;
+  return _ai;
 }
 
-function getGroundingTool(): Tool {
-  if (!_groundingTool) {
-    const dataStorePath = `projects/${env.GCP_PROJECT_ID}/locations/global/collections/default_collection/dataStores/${env.GCP_DATA_STORE_ID}`;
-    _groundingTool = {
-      retrieval: {
-        vertexAiSearch: {
-          datastore: dataStorePath,
-        },
-      },
-    };
-  }
-  return _groundingTool;
+const MODEL_ID = "gemini-2.0-flash"; // Changed from 2.5-flash for compatibility
+
+function getDataStoreResource(): string {
+  return `projects/${env.GCP_PROJECT_ID}/locations/global/collections/default_collection/dataStores/${env.GCP_DATA_STORE_ID}`;
 }
 
-// ─── Types ────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 export type SourceCitation = {
   source: string;
   page?: number;
@@ -66,57 +40,67 @@ export interface MessageHistory {
   content: string;
 }
 
-// ─── Main Function ────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Main function: Ask a tax question, get a grounded answer
+// ---------------------------------------------------------------------------
 export async function answerTaxQuestion(
   question: string,
-  messageHistory: MessageHistory[] = [],
+  messageHistory: MessageHistory[] = []
 ): Promise<{
   answer: string;
   sources: SourceCitation[];
 }> {
-  // Keep last 10 messages for conversational context
   const MAX_HISTORY = 10;
   const recentHistory = messageHistory.slice(-MAX_HISTORY);
 
+  // Build the conversation contents for Gemini multi-turn
+  const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+
+  // Add conversation history
+  for (const msg of recentHistory) {
+    contents.push({
+      role: msg.role === "user" ? "user" : "model",
+      parts: [{ text: msg.content }],
+    });
+  }
+
+  // Add the current question
+  contents.push({
+    role: "user",
+    parts: [{ text: question }],
+  });
+
   try {
-    const model = getModel();
-    const groundingTool = getGroundingTool();
-
-    // Build multi-turn conversation contents for Gemini
-    const contents = [
-      // Include conversation history
-      ...recentHistory.map((msg) => ({
-        role: msg.role === "user" ? "user" : ("model" as const),
-        parts: [{ text: msg.content }],
-      })),
-      // Current user question
-      {
-        role: "user" as const,
-        parts: [{ text: question }],
-      },
-    ];
-
-    // Call Gemini with grounding (Vertex AI Search retrieval)
-    const response = await model.generateContent({
+    const response = await getAI().models.generateContent({
+      model: MODEL_ID,
       contents,
-      tools: [groundingTool],
+      config: {
+        systemInstruction:
+          "Kamu adalah Konsul Pajak, asisten AI perpajakan Indonesia. Jawab secara formal, ringkas, tetap sopan, dan sertakan dasar hukum bila tersedia. Hindari spekulasi yang tidak berdasar. Gunakan konteks percakapan sebelumnya untuk memberikan jawaban yang lebih relevan. Jawab dalam Bahasa Indonesia.",
+        temperature: 0.2,
+        // Grounding: use Vertex AI Search data store for RAG
+        tools: [
+          {
+            retrieval: {
+              vertexAiSearch: {
+                datastore: getDataStoreResource(),
+              },
+            },
+          },
+        ],
+      },
     });
 
-    const candidate = response.response.candidates?.[0];
     const answer =
-      candidate?.content?.parts?.[0]?.text?.trim() ??
+      response.text?.trim() ??
       "Maaf, saya belum dapat menemukan jawaban pasti. Silakan ajukan pertanyaan lebih spesifik.";
 
     // Extract source citations from grounding metadata
-    const sources = extractSources(candidate?.groundingMetadata);
-
-    console.log(
-      `[RAG] Gemini response received. Sources: ${sources.length}`,
-    );
+    const sources = extractSources(response);
 
     return { answer, sources };
   } catch (error) {
-    console.error("[RAG] Vertex AI Gemini request failed", error);
+    console.error("[RAG] Vertex AI completion failed", error);
     return {
       answer:
         "Maaf, sistem sedang mengalami gangguan saat memproses pertanyaan Anda. Silakan coba lagi beberapa saat lagi.",
@@ -125,44 +109,56 @@ export async function answerTaxQuestion(
   }
 }
 
-// ─── Helper: Extract sources from Gemini grounding metadata ───────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractSources(
-  groundingMetadata: any,
-): SourceCitation[] {
-  if (!groundingMetadata) return [];
+// ---------------------------------------------------------------------------
+// Extract source citations from Vertex AI grounding metadata
+// ---------------------------------------------------------------------------
+function extractSources(response: any): SourceCitation[] {
+  try {
+    const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
+    if (!groundingMetadata) return [];
 
-  const sources: SourceCitation[] = [];
+    const chunks = groundingMetadata.groundingChunks ?? [];
+    const supports = groundingMetadata.groundingSupports ?? [];
 
-  // groundingChunks contain the retrieved document references
-  const chunks = groundingMetadata.groundingChunks as
-    | Array<{
-        web?: { uri?: string; title?: string };
-        retrievedContext?: { uri?: string; title?: string; text?: string };
-      }>
-    | undefined;
+    const sources: SourceCitation[] = [];
+    const seenSources = new Set<string>();
 
-  if (chunks) {
+    // Extract from grounding chunks (retrieved document references)
     for (const chunk of chunks) {
-      if (chunk.retrievedContext) {
-        sources.push({
-          source: chunk.retrievedContext.title ?? chunk.retrievedContext.uri ?? "Referensi",
-          snippet: chunk.retrievedContext.text?.slice(0, 800),
-        });
-      } else if (chunk.web) {
-        sources.push({
-          source: chunk.web.title ?? chunk.web.uri ?? "Referensi Web",
-          snippet: undefined,
-        });
+      const retrievedContext = chunk.retrievedContext;
+      if (retrievedContext) {
+        const uri = retrievedContext.uri ?? "";
+        const title = retrievedContext.title ?? "";
+        const sourceKey = title || uri || `Referensi ${sources.length + 1}`;
+
+        if (!seenSources.has(sourceKey)) {
+          seenSources.add(sourceKey);
+          sources.push({
+            source: sourceKey,
+            snippet: chunk.web?.title ?? undefined,
+          });
+        }
       }
     }
-  }
 
-  // Deduplicate sources by source name
-  const seen = new Set<string>();
-  return sources.filter((s) => {
-    if (seen.has(s.source)) return false;
-    seen.add(s.source);
-    return true;
-  });
+    // Extract from grounding supports (text snippets with source info)
+    for (const support of supports) {
+      const segment = support.segment;
+      if (segment?.text && sources.length > 0) {
+        // Attach snippet text to the first source that doesn't have one yet
+        const targetSource = sources.find((s) => !s.snippet);
+        if (targetSource) {
+          targetSource.snippet = segment.text.slice(0, 800);
+        }
+      }
+    }
+
+    // If no structured sources found, return empty
+    if (sources.length === 0) return [];
+
+    return sources;
+  } catch (error) {
+    console.error("[RAG] Failed to extract grounding sources", error);
+    return [];
+  }
 }
