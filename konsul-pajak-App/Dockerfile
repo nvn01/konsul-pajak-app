@@ -17,9 +17,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Skip environment validation during build and provide placeholder for OpenAI
+# Skip environment validation during build
 ENV SKIP_ENV_VALIDATION=1
-ENV OPENAI_API_KEY="sk-placeholder-build-key"
 
 # Build the application
 RUN npm run build

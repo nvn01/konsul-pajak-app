@@ -1,61 +1,47 @@
 "use server";
 
-import OpenAI from "openai/index.mjs";
-import { ChromaClient } from "chromadb";
-import fs from "fs";
-import path from "path";
-
+import { VertexAI, type Tool } from "@google-cloud/vertexai";
 import { env } from "nvn/env";
 
-// Force read .env to bypass stale shell environment variables
-const envPath = path.join(process.cwd(), ".env");
-let apiKey = env.OPENAI_API_KEY;
+// ─── Configuration ────────────────────────────────────────────────────
+const GEMINI_MODEL = "gemini-2.0-flash";
+const DATA_STORE_PATH = `projects/${env.GCP_PROJECT_ID}/locations/global/collections/default_collection/dataStores/${env.GCP_DATA_STORE_ID}`;
 
-try {
-  if (fs.existsSync(envPath)) {
-    const envFile = fs.readFileSync(envPath, "utf8");
-    const match = envFile.match(/OPENAI_API_KEY="?([^"\n]+)"?/);
-    if (match && match[1]) {
-      apiKey = match[1];
-      console.log("[RAG] Using API Key from .env file");
-    }
-  }
-} catch (e) {
-  console.error("[RAG] Failed to read .env file directly", e);
-}
-
-const openai = new OpenAI({
-  apiKey: apiKey,
+// ─── Vertex AI Client ─────────────────────────────────────────────────
+const vertexAI = new VertexAI({
+  project: env.GCP_PROJECT_ID,
+  location: env.GCP_LOCATION,
+  googleAuthOptions: {
+    keyFilename: env.GOOGLE_APPLICATION_CREDENTIALS,
+  },
 });
 
-// Custom implementation since it's not exported or missing in this version
-class OpenAIEmbeddingFunction {
-  private apiKey: string;
-
-  constructor({ openai_api_key }: { openai_api_key: string }) {
-    this.apiKey = openai_api_key;
-  }
-
-  async generate(texts: string[]): Promise<number[][]> {
-    const response = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: texts,
-    });
-    return response.data.map((d) => d.embedding);
-  }
-}
-
-const embedder = new OpenAIEmbeddingFunction({
-  openai_api_key: apiKey,
+const model = vertexAI.getGenerativeModel({
+  model: GEMINI_MODEL,
+  systemInstruction: {
+    role: "system",
+    parts: [
+      {
+        text: "Kamu adalah Konsul Pajak, asisten AI perpajakan Indonesia. Jawab secara formal, ringkas, tetap sopan, dan sertakan dasar hukum bila tersedia. Hindari spekulasi yang tidak berdasar. Gunakan konteks percakapan sebelumnya untuk memberikan jawaban yang lebih relevan. Jawab dalam Bahasa Indonesia.",
+      },
+    ],
+  },
+  generationConfig: {
+    temperature: 0.2,
+    maxOutputTokens: 2048,
+  },
 });
 
-const chroma = new ChromaClient({
-  path: env.CHROMA_HOST,
-});
+// Grounding tool — tells Gemini to search the Vertex AI Data Store
+const groundingTool: Tool = {
+  retrieval: {
+    vertexAiSearch: {
+      datastore: DATA_STORE_PATH,
+    },
+  },
+};
 
-const COLLECTION_NAME = "pajak_docs";
-const MAX_SNIPPET_LENGTH = 800;
-
+// ─── Types ────────────────────────────────────────────────────────────
 export type SourceCitation = {
   source: string;
   page?: number;
@@ -63,124 +49,104 @@ export type SourceCitation = {
 };
 
 export interface MessageHistory {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
-async function fetchContext(question: string): Promise<{
-  promptContext: string;
-  sources: SourceCitation[];
-}> {
-  try {
-    const collection = await chroma.getOrCreateCollection({
-      name: COLLECTION_NAME,
-      embeddingFunction: embedder,
-    });
-
-    const queryResult = await collection.query({
-      queryTexts: [question],
-      nResults: 4,
-    });
-
-    const documents = queryResult.documents?.[0] ?? [];
-    const metadatas = (queryResult.metadatas?.[0] ?? []) as Record<
-      string,
-      unknown
-    >[];
-
-    const sources: SourceCitation[] = documents.map((doc, idx) => {
-      const metadata = metadatas[idx] ?? {};
-      const rawSnippet =
-        typeof doc === "string" ? doc : JSON.stringify(doc, null, 2);
-
-      return {
-        source:
-          (metadata.title as string) ??
-          (metadata.source as string) ??
-          (metadata.uu as string) ??
-          `Referensi ${idx + 1}`,
-        page:
-          typeof metadata.page === "number"
-            ? metadata.page
-            : metadata.page
-              ? Number(metadata.page)
-              : undefined,
-        snippet: rawSnippet.slice(0, MAX_SNIPPET_LENGTH),
-      };
-    });
-
-    const promptContext = sources
-      .map(
-        (src, idx) =>
-          `[#${idx + 1}] ${src.source}${src.page ? ` (hal ${src.page})` : ""
-          }\n${src.snippet ?? ""}`,
-      )
-      .join("\n\n");
-
-    return { promptContext, sources };
-  } catch (error) {
-    console.error("[RAG] Chroma query failed", error);
-    return { promptContext: "", sources: [] };
-  }
-}
-
+// ─── Main Function ────────────────────────────────────────────────────
 export async function answerTaxQuestion(
   question: string,
-  messageHistory: MessageHistory[] = []
+  messageHistory: MessageHistory[] = [],
 ): Promise<{
   answer: string;
   sources: SourceCitation[];
 }> {
-  // Configuration: Keep last 10 messages for context
+  // Keep last 10 messages for conversational context
   const MAX_HISTORY = 10;
   const recentHistory = messageHistory.slice(-MAX_HISTORY);
 
-  // Build context-aware query for retrieval
-  let retrievalQuery = question;
-  if (recentHistory.length > 0) {
-    const context = recentHistory
-      .map((m) => `${m.role === 'user' ? 'Pengguna' : 'Asisten'}: ${m.content}`)
-      .join('\n');
-    retrievalQuery = `Konteks Percakapan:\n${context}\n\nPertanyaan Terbaru: ${question}`;
-  }
-
-  const { promptContext, sources } = await fetchContext(retrievalQuery);
-
-  const systemPrompt =
-    "Kamu adalah Konsul Pajak, asisten AI perpajakan Indonesia. Jawab secara formal, ringkas, tetap sopan, dan sertakan dasar hukum bila tersedia. Hindari spekulasi yang tidak berdasar. Gunakan konteks percakapan sebelumnya untuk memberikan jawaban yang lebih relevan.";
-
-  const userPrompt = promptContext
-    ? `Gunakan referensi berikut untuk menjawab pertanyaan perpajakan.\n\nKonteks:\n${promptContext}\n\nPertanyaan: ${question}`
-    : `Tidak ada konteks tambahan yang relevan. Jawab pertanyaan terkait perpajakan Indonesia sebaik mungkin berdasarkan peraturan resmi.\n\nPertanyaan: ${question}`;
-
   try {
-    // Build messages array with conversation history
-    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: "system", content: systemPrompt },
+    // Build multi-turn conversation contents for Gemini
+    const contents = [
+      // Include conversation history
       ...recentHistory.map((msg) => ({
-        role: msg.role === 'user' ? 'user' as const : 'assistant' as const,
-        content: msg.content,
+        role: msg.role === "user" ? "user" : ("model" as const),
+        parts: [{ text: msg.content }],
       })),
-      { role: "user", content: userPrompt },
+      // Current user question
+      {
+        role: "user" as const,
+        parts: [{ text: question }],
+      },
     ];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.2,
-      messages,
+    // Call Gemini with grounding (Vertex AI Search retrieval)
+    const response = await model.generateContent({
+      contents,
+      tools: [groundingTool],
     });
 
+    const candidate = response.response.candidates?.[0];
     const answer =
-      completion.choices[0]?.message?.content?.trim() ??
+      candidate?.content?.parts?.[0]?.text?.trim() ??
       "Maaf, saya belum dapat menemukan jawaban pasti. Silakan ajukan pertanyaan lebih spesifik.";
+
+    // Extract source citations from grounding metadata
+    const sources = extractSources(candidate?.groundingMetadata);
+
+    console.log(
+      `[RAG] Gemini response received. Sources: ${sources.length}`,
+    );
 
     return { answer, sources };
   } catch (error) {
-    console.error("[RAG] OpenAI completion failed", error);
+    console.error("[RAG] Vertex AI Gemini request failed", error);
     return {
       answer:
         "Maaf, sistem sedang mengalami gangguan saat memproses pertanyaan Anda. Silakan coba lagi beberapa saat lagi.",
-      sources,
+      sources: [],
     };
   }
+}
+
+// ─── Helper: Extract sources from Gemini grounding metadata ───────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractSources(
+  groundingMetadata: any,
+): SourceCitation[] {
+  if (!groundingMetadata) return [];
+
+  const sources: SourceCitation[] = [];
+
+  // groundingChunks contain the retrieved document references
+  const chunks = groundingMetadata.groundingChunks as
+    | Array<{
+        web?: { uri?: string; title?: string };
+        retrievedContext?: { uri?: string; title?: string; text?: string };
+      }>
+    | undefined;
+
+  if (chunks) {
+    for (const chunk of chunks) {
+      if (chunk.retrievedContext) {
+        sources.push({
+          source: chunk.retrievedContext.title ?? chunk.retrievedContext.uri ?? "Referensi",
+          snippet: chunk.retrievedContext.text?.slice(0, 800),
+        });
+      } else if (chunk.web) {
+        sources.push({
+          source: chunk.web.title ?? chunk.web.uri ?? "Referensi Web",
+          snippet: undefined,
+        });
+      }
+    }
+  }
+
+  // Deduplicate sources by source name
+  const seen = new Set<string>();
+  return sources.filter((s) => {
+    if (seen.has(s.source)) return false;
+    seen.add(s.source);
+    return true;
+  });
 }

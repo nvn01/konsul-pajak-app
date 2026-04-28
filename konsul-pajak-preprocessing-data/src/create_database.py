@@ -134,8 +134,8 @@ def save_to_chroma(chunks: list[Document]):
         else:
             client = chromadb.HttpClient(host=chroma_host, port=8000)
 
-    # Inisialisasi embedding function
-    embedding_function = OpenAIEmbeddings()
+    # Inisialisasi embedding function — MUST match the model used in the app runtime
+    embedding_function = OpenAIEmbeddings(model="text-embedding-3-small")
 
     # Dapatkan atau buat collection
     try:
