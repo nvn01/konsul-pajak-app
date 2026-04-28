@@ -82,8 +82,8 @@ def main():
         else:
             client = chromadb.HttpClient(host=chroma_host, port=8000)
     
-    # Siapkan embedding function
-    embedding_function = OpenAIEmbeddings()
+    # Siapkan embedding function — MUST match the model used in create_database.py
+    embedding_function = OpenAIEmbeddings(model="text-embedding-3-small")
 
     # Hubungkan ke collection yang sudah ada di cloud
     db = Chroma(

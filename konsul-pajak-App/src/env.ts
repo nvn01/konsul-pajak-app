@@ -21,13 +21,17 @@ export const env = createEnv({
       z.string().url(),
     ),
 
-    // --- VARIABEL TAMBAHAN KITA ---
+    // --- Google OAuth ---
     GOOGLE_CLIENT_ID: z.string(),
     GOOGLE_CLIENT_SECRET: z.string(),
 
-    OPENAI_API_KEY: z.string(),
-    CHROMA_HOST: z.string(),
+    // --- Google Cloud / Vertex AI ---
+    GCP_PROJECT_ID: z.string(),
+    GCP_LOCATION: z.string().default("asia-southeast2"),
+    GCP_DATA_STORE_ID: z.string(),
+    GOOGLE_APPLICATION_CREDENTIALS: z.string(),
 
+    // --- Admin ---
     ADMIN_USERNAME: z.string(),
     ADMIN_PASSWORD: z.string(),
     // -----------------------------
@@ -51,11 +55,17 @@ export const env = createEnv({
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
 
-    // --- MASUKKAN VALUE DI SINI ---
+    // --- Google OAuth ---
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    CHROMA_HOST: process.env.CHROMA_HOST,
+
+    // --- Google Cloud / Vertex AI ---
+    GCP_PROJECT_ID: process.env.GCP_PROJECT_ID,
+    GCP_LOCATION: process.env.GCP_LOCATION,
+    GCP_DATA_STORE_ID: process.env.GCP_DATA_STORE_ID,
+    GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+
+    // --- Admin ---
     ADMIN_USERNAME: process.env.ADMIN_USERNAME,
     ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
     // -----------------------------
