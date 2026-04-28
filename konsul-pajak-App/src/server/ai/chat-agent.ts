@@ -20,7 +20,7 @@ function getAI(): GoogleGenAI {
   return _ai;
 }
 
-const MODEL_ID = "gemini-2.0-flash"; // Changed from 2.5-flash for compatibility
+const MODEL_ID = "gemini-2.5-flash"; // Matches konsul-hukum
 
 function getDataStoreResource(): string {
   return `projects/${env.GCP_PROJECT_ID}/locations/global/collections/default_collection/dataStores/${env.GCP_DATA_STORE_ID}`;
