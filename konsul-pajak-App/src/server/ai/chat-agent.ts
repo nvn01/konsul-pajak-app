@@ -1,45 +1,58 @@
 "use server";
 
-import { VertexAI, type Tool } from "@google-cloud/vertexai";
+import { VertexAI, type GenerativeModel, type Tool } from "@google-cloud/vertexai";
 import { env } from "nvn/env";
 
 // ─── Configuration ────────────────────────────────────────────────────
 const GEMINI_MODEL = "gemini-2.0-flash";
-const DATA_STORE_PATH = `projects/${env.GCP_PROJECT_ID}/locations/global/collections/default_collection/dataStores/${env.GCP_DATA_STORE_ID}`;
 
-// ─── Vertex AI Client ─────────────────────────────────────────────────
-const vertexAI = new VertexAI({
-  project: env.GCP_PROJECT_ID,
-  location: env.GCP_LOCATION,
-  googleAuthOptions: {
-    keyFilename: env.GOOGLE_APPLICATION_CREDENTIALS,
-  },
-});
+// ─── Lazy-initialized Vertex AI client ────────────────────────────────
+// Must be lazy to avoid crashing during Next.js build (no env vars available)
+let _model: GenerativeModel | null = null;
+let _groundingTool: Tool | null = null;
 
-const model = vertexAI.getGenerativeModel({
-  model: GEMINI_MODEL,
-  systemInstruction: {
-    role: "system",
-    parts: [
-      {
-        text: "Kamu adalah Konsul Pajak, asisten AI perpajakan Indonesia. Jawab secara formal, ringkas, tetap sopan, dan sertakan dasar hukum bila tersedia. Hindari spekulasi yang tidak berdasar. Gunakan konteks percakapan sebelumnya untuk memberikan jawaban yang lebih relevan. Jawab dalam Bahasa Indonesia.",
+function getModel(): GenerativeModel {
+  if (!_model) {
+    const vertexAI = new VertexAI({
+      project: env.GCP_PROJECT_ID,
+      location: env.GCP_LOCATION,
+      googleAuthOptions: {
+        keyFilename: env.GOOGLE_APPLICATION_CREDENTIALS,
       },
-    ],
-  },
-  generationConfig: {
-    temperature: 0.2,
-    maxOutputTokens: 2048,
-  },
-});
+    });
 
-// Grounding tool — tells Gemini to search the Vertex AI Data Store
-const groundingTool: Tool = {
-  retrieval: {
-    vertexAiSearch: {
-      datastore: DATA_STORE_PATH,
-    },
-  },
-};
+    _model = vertexAI.getGenerativeModel({
+      model: GEMINI_MODEL,
+      systemInstruction: {
+        role: "system",
+        parts: [
+          {
+            text: "Kamu adalah Konsul Pajak, asisten AI perpajakan Indonesia. Jawab secara formal, ringkas, tetap sopan, dan sertakan dasar hukum bila tersedia. Hindari spekulasi yang tidak berdasar. Gunakan konteks percakapan sebelumnya untuk memberikan jawaban yang lebih relevan. Jawab dalam Bahasa Indonesia.",
+          },
+        ],
+      },
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 2048,
+      },
+    });
+  }
+  return _model;
+}
+
+function getGroundingTool(): Tool {
+  if (!_groundingTool) {
+    const dataStorePath = `projects/${env.GCP_PROJECT_ID}/locations/global/collections/default_collection/dataStores/${env.GCP_DATA_STORE_ID}`;
+    _groundingTool = {
+      retrieval: {
+        vertexAiSearch: {
+          datastore: dataStorePath,
+        },
+      },
+    };
+  }
+  return _groundingTool;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────
 export type SourceCitation = {
@@ -66,6 +79,9 @@ export async function answerTaxQuestion(
   const recentHistory = messageHistory.slice(-MAX_HISTORY);
 
   try {
+    const model = getModel();
+    const groundingTool = getGroundingTool();
+
     // Build multi-turn conversation contents for Gemini
     const contents = [
       // Include conversation history
