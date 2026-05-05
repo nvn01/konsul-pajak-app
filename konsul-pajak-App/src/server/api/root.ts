@@ -2,6 +2,7 @@
 import { createCallerFactory, createTRPCRouter, publicProcedure } from "nvn/server/api/trpc";
 import { chatRouter } from "nvn/server/api/routers/chat";
 import { peraturanRouter } from "nvn/server/api/routers/peraturan";
+import { adminRouter } from "nvn/server/api/routers/admin";
 
 /**
  * This is the primary router for your server.
@@ -12,6 +13,7 @@ export const appRouter = createTRPCRouter({
   healthCheck: publicProcedure.query(() => "ok"),
   chat: chatRouter,
   peraturan: peraturanRouter,
+  admin: adminRouter,
 });
 
 // export type definition of API
