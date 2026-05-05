@@ -159,6 +159,8 @@ export async function answerTaxQuestion(
 // ---------------------------------------------------------------------------
 // Extract source citations from Vertex AI grounding metadata
 // ---------------------------------------------------------------------------
+const CONFIDENCE_THRESHOLD = 0.5;
+
 function extractSources(response: any): SourceCitation[] {
   try {
     const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
@@ -167,25 +169,35 @@ function extractSources(response: any): SourceCitation[] {
     const chunks = groundingMetadata.groundingChunks ?? [];
     const supports = groundingMetadata.groundingSupports ?? [];
 
-    // Collect only chunk indices that are actually referenced by grounding supports
-    // This filters out irrelevant retrieved documents that weren't used in the answer
-    const referencedIndices = new Set<number>();
+    // Track the maximum confidence score each chunk receives across all supports
+    // This lets us filter out low-confidence (tangentially related) sources
+    const chunkMaxConfidence = new Map<number, number>();
+
     for (const support of supports) {
-      const indices = support.groundingChunkIndices ?? [];
-      for (const idx of indices) {
-        referencedIndices.add(idx);
+      const indices: number[] = support.groundingChunkIndices ?? [];
+      const scores: number[] = support.confidenceScores ?? [];
+
+      for (let j = 0; j < indices.length; j++) {
+        const chunkIdx = indices[j]!;
+        const score = scores[j] ?? 0;
+        const current = chunkMaxConfidence.get(chunkIdx) ?? 0;
+        if (score > current) {
+          chunkMaxConfidence.set(chunkIdx, score);
+        }
       }
     }
 
     const sources: SourceCitation[] = [];
     const seenSources = new Set<string>();
 
-    // Only include chunks that were actually referenced in the answer
+    // Only include chunks that have high enough confidence
     for (let i = 0; i < chunks.length; i++) {
-      // If there are supports, only include referenced chunks
-      // If there are no supports at all, include all chunks as fallback
-      if (supports.length > 0 && !referencedIndices.has(i)) {
-        continue;
+      // If there are supports, check confidence threshold
+      if (supports.length > 0) {
+        const maxConf = chunkMaxConfidence.get(i) ?? 0;
+        if (maxConf < CONFIDENCE_THRESHOLD) {
+          continue;
+        }
       }
 
       const chunk = chunks[i];
