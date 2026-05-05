@@ -47,6 +47,23 @@ const SYSTEM_PROMPT = `Kamu adalah **Konsul Pajak**, asisten AI ahli perpajakan 
 - Jika relevan, berikan **contoh penerapan** sederhana.
 - Akhiri dengan **catatan** jika ada ketentuan peralihan atau pengecualian yang perlu diperhatikan.
 
+## DAFTAR REFERENSI (WAJIB)
+Di akhir setiap jawaban, kamu WAJIB menambahkan daftar referensi dalam format berikut.
+Cantumkan HANYA undang-undang yang benar-benar kamu sebutkan atau kutip dalam jawaban di atas.
+JANGAN cantumkan undang-undang yang tidak relevan dengan jawaban.
+
+Format (HARUS persis seperti ini):
+
+<<<REFERENSI>>>
+[{"source": "UU Nomor X Tahun YYYY"}, {"source": "UU Nomor Z Tahun YYYY"}]
+<<<END_REFERENSI>>>
+
+Contoh: jika jawaban kamu menyebutkan UU Nomor 7 Tahun 2021 dan UU Nomor 42 Tahun 2009, maka:
+
+<<<REFERENSI>>>
+[{"source": "UU Nomor 7 Tahun 2021"}, {"source": "UU Nomor 42 Tahun 2009"}]
+<<<END_REFERENSI>>>
+
 ## CAKUPAN PENGETAHUAN
 Database berisi 40 Undang-Undang perpajakan Indonesia, meliputi:
 - Ketentuan Umum dan Tata Cara Perpajakan (KUP)
@@ -138,12 +155,12 @@ export async function answerTaxQuestion(
       },
     });
 
-    const answer =
+    const rawText =
       response.text?.trim() ??
       "Maaf, saya belum dapat menemukan jawaban pasti. Silakan ajukan pertanyaan lebih spesifik.";
 
-    // Extract source citations from grounding metadata
-    const sources = extractSources(response);
+    // Parse the answer and extract inline references from the AI's response
+    const { answer, sources } = parseAnswerAndSources(rawText);
 
     return { answer, sources };
   } catch (error) {
@@ -157,67 +174,48 @@ export async function answerTaxQuestion(
 }
 
 // ---------------------------------------------------------------------------
-// Extract source citations from Vertex AI grounding metadata
+// Parse answer text and extract inline <<<REFERENSI>>> JSON block
 // ---------------------------------------------------------------------------
-const CONFIDENCE_THRESHOLD = 0.5;
-
-function extractSources(response: any): SourceCitation[] {
+function parseAnswerAndSources(rawText: string): {
+  answer: string;
+  sources: SourceCitation[];
+} {
   try {
-    const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
-    if (!groundingMetadata) return [];
+    // Look for the <<<REFERENSI>>> ... <<<END_REFERENSI>>> block
+    const refRegex = /<<<REFERENSI>>>\s*([\s\S]*?)\s*<<<END_REFERENSI>>>/;
+    const match = rawText.match(refRegex);
 
-    const chunks = groundingMetadata.groundingChunks ?? [];
-    const supports = groundingMetadata.groundingSupports ?? [];
-
-    // Track the maximum confidence score each chunk receives across all supports
-    // This lets us filter out low-confidence (tangentially related) sources
-    const chunkMaxConfidence = new Map<number, number>();
-
-    for (const support of supports) {
-      const indices: number[] = support.groundingChunkIndices ?? [];
-      const scores: number[] = support.confidenceScores ?? [];
-
-      for (let j = 0; j < indices.length; j++) {
-        const chunkIdx = indices[j]!;
-        const score = scores[j] ?? 0;
-        const current = chunkMaxConfidence.get(chunkIdx) ?? 0;
-        if (score > current) {
-          chunkMaxConfidence.set(chunkIdx, score);
-        }
-      }
+    if (!match) {
+      // No reference block found — return the full text as answer with no sources
+      return { answer: rawText.trim(), sources: [] };
     }
 
-    const sources: SourceCitation[] = [];
-    const seenSources = new Set<string>();
+    // Extract the clean answer (everything before the reference block)
+    const answer = rawText
+      .replace(refRegex, "")
+      .trim();
 
-    // Only include chunks that have high enough confidence
-    for (let i = 0; i < chunks.length; i++) {
-      // If there are supports, check confidence threshold
-      if (supports.length > 0) {
-        const maxConf = chunkMaxConfidence.get(i) ?? 0;
-        if (maxConf < CONFIDENCE_THRESHOLD) {
-          continue;
-        }
+    // Parse the JSON sources
+    const jsonStr = match[1]?.trim() ?? "[]";
+    let parsedSources: SourceCitation[] = [];
+
+    try {
+      const parsed = JSON.parse(jsonStr);
+      if (Array.isArray(parsed)) {
+        parsedSources = parsed
+          .filter((item: any) => item && typeof item.source === "string")
+          .map((item: any) => ({
+            source: item.source,
+          }));
       }
-
-      const chunk = chunks[i];
-      const retrievedContext = chunk?.retrievedContext;
-      if (retrievedContext) {
-        const title = retrievedContext.title ?? "";
-        const sourceKey = title || `Referensi ${sources.length + 1}`;
-
-        if (!seenSources.has(sourceKey)) {
-          seenSources.add(sourceKey);
-          sources.push({
-            source: sourceKey,
-          });
-        }
-      }
+    } catch (jsonError) {
+      console.error("[RAG] Failed to parse reference JSON:", jsonError);
     }
 
-    return sources;
+    return { answer, sources: parsedSources };
   } catch (error) {
-    console.error("[RAG] Failed to extract grounding sources", error);
-    return [];
+    console.error("[RAG] Failed to parse answer and sources", error);
+    return { answer: rawText.trim(), sources: [] };
   }
 }
+
