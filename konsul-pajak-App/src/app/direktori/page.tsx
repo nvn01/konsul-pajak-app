@@ -25,6 +25,8 @@ export default function DirektoriPage() {
   const [filterStatus, setFilterStatus] = useState("")
   const [filterTahun, setFilterTahun] = useState("")
 
+  const [page, setPage] = useState(1)
+
   const filterOptionsQuery = api.peraturan.filterOptions.useQuery()
 
   const peraturanQuery = api.peraturan.list.useQuery({
@@ -32,13 +34,18 @@ export default function DirektoriPage() {
     topik: filterTopik || undefined,
     status: filterStatus || undefined,
     tahun: filterTahun || undefined,
+    page,
+    limit: 10,
   })
 
-  const peraturanList = peraturanQuery.data ?? []
+  const peraturanList = peraturanQuery.data?.items ?? []
+  const totalCount = peraturanQuery.data?.totalCount ?? 0
+  const totalPages = peraturanQuery.data?.totalPages ?? 1
   const filterOptions = filterOptionsQuery.data
 
   const handleSearch = () => {
     setSearch(searchInput)
+    setPage(1)
   }
 
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
@@ -55,6 +62,7 @@ export default function DirektoriPage() {
     setFilterTopik("")
     setFilterStatus("")
     setFilterTahun("")
+    setPage(1)
   }
 
   const hasActiveFilters = search || filterTopik || filterStatus || filterTahun
@@ -157,7 +165,7 @@ export default function DirektoriPage() {
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <select
               value={filterTopik}
-              onChange={(e) => setFilterTopik(e.target.value)}
+              onChange={(e) => { setFilterTopik(e.target.value); setPage(1); }}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Semua Topik</option>
@@ -168,7 +176,7 @@ export default function DirektoriPage() {
 
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Semua Status</option>
@@ -179,7 +187,7 @@ export default function DirektoriPage() {
 
             <select
               value={filterTahun}
-              onChange={(e) => setFilterTahun(e.target.value)}
+              onChange={(e) => { setFilterTahun(e.target.value); setPage(1); }}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Semua Tahun</option>
@@ -203,7 +211,7 @@ export default function DirektoriPage() {
             <p className="text-sm text-muted-foreground">
               {peraturanQuery.isLoading
                 ? "Memuat data peraturan..."
-                : `Menampilkan ${peraturanList.length} Peraturan`}
+                : `Menampilkan ${peraturanList.length} dari ${totalCount} Peraturan`}
             </p>
           </div>
 
@@ -289,6 +297,41 @@ export default function DirektoriPage() {
                 className="text-sm text-sidebar-primary hover:underline cursor-pointer"
               >
                 Reset filter
+              </button>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-6 pb-4">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="rounded-lg border border-border px-3 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-muted transition-colors cursor-pointer"
+              >
+                ← Sebelumnya
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                    p === page
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "border border-border hover:bg-muted"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="rounded-lg border border-border px-3 py-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-muted transition-colors cursor-pointer"
+              >
+                Selanjutnya →
               </button>
             </div>
           )}
