@@ -1,6 +1,10 @@
 import { PrismaClient } from "@prisma/client";
-import * as fs from "fs";
-import * as path from "path";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const prisma = new PrismaClient();
 
@@ -16,8 +20,8 @@ interface PeraturanData {
 }
 
 async function main() {
-  const jsonPath = path.join(__dirname, "uu.json");
-  const rawData = fs.readFileSync(jsonPath, "utf-8");
+  const jsonPath = join(__dirname, "uu.json");
+  const rawData = readFileSync(jsonPath, "utf-8");
   const peraturanList: PeraturanData[] = JSON.parse(rawData);
 
   console.log(`Seeding ${peraturanList.length} peraturan...`);
