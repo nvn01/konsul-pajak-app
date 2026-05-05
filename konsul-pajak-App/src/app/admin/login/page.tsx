@@ -2,34 +2,30 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { api } from 'nvn/trpc/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-// Mock mutation hook - replace with actual tRPC hook
-const useAdminLogin = () => {
-  // TODO: Replace with api.admin.login.useMutation()
-  return {
-    mutate: (data: { username: string; password: string }) => {
-      console.log('Admin login:', data)
-      // Simulate successful login and redirect
-      setTimeout(() => {
-        window.location.href = '/admin/dashboard'
-      }, 1000)
-    },
-    isLoading: false,
-    isError: false,
-    error: null,
-  }
-}
-
 export default function AdminLoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const loginMutation = useAdminLogin()
+  const [error, setError] = useState('')
+  const router = useRouter()
+
+  const loginMutation = api.admin.login.useMutation({
+    onSuccess: () => {
+      router.push('/admin/dashboard')
+    },
+    onError: (err) => {
+      setError(err.message || 'Login gagal.')
+    },
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
     loginMutation.mutate({ username, password })
   }
 
@@ -45,7 +41,7 @@ export default function AdminLoginPage() {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-primary">Admin Login</h1>
-            <p className="text-sm text-muted-foreground">Akses dashboard feedback</p>
+            <p className="text-sm text-muted-foreground">Akses panel administrasi Konsul Pajak</p>
           </div>
 
           {/* Login Form */}
@@ -55,11 +51,11 @@ export default function AdminLoginPage() {
               <Input
                 id="username"
                 type="text"
-                placeholder="admin"
+                placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                disabled={loginMutation.isLoading}
+                disabled={loginMutation.isPending}
               />
             </div>
 
@@ -72,22 +68,22 @@ export default function AdminLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={loginMutation.isLoading}
+                disabled={loginMutation.isPending}
               />
             </div>
 
-            {loginMutation.isError && (
+            {error && (
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
-                Login gagal. Periksa kembali username dan password Anda.
+                {error}
               </div>
             )}
 
             <Button
               type="submit"
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-              disabled={loginMutation.isLoading}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold cursor-pointer"
+              disabled={loginMutation.isPending}
             >
-              {loginMutation.isLoading ? 'Loading...' : 'Login'}
+              {loginMutation.isPending ? 'Loading...' : 'Login'}
             </Button>
           </form>
 
