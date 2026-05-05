@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import { useTypewriter } from "nvn/utils/useTypewriter"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -17,6 +18,8 @@ type ChatMessageData = RouterOutputs["chat"]["messages"][number]
 
 interface ChatMessageProps {
   message: ChatMessageData
+  /** Whether this message was just received (triggers typewriter animation) */
+  isNew?: boolean
 }
 
 // Collapsible sources drawer component
@@ -77,7 +80,10 @@ function SourcesDrawer({ sources }: { sources: Array<{ source: string; page?: nu
   )
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, isNew = false }: ChatMessageProps) {
+  // Typewriter animation for new assistant messages
+  const shouldAnimate = isNew && message.role === "assistant"
+  const { displayText, isAnimating, skip } = useTypewriter(message.content, shouldAnimate)
   const [selectedFeedback, setSelectedFeedback] = useState<"suka" | "tidak_suka" | null>(
     message.feedback?.rating ?? null
   )
@@ -147,10 +153,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
             }`}
         >
           {message.role === 'assistant' ? (
-            <div className="prose-chat text-sm">
+            <div className="prose-chat text-sm" onClick={isAnimating ? skip : undefined} style={isAnimating ? { cursor: 'pointer' } : undefined}>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {message.content}
+                {shouldAnimate ? displayText : message.content}
               </ReactMarkdown>
+              {isAnimating && (
+                <span className="inline-block w-0.5 h-4 bg-foreground animate-pulse ml-0.5 align-text-bottom" />
+              )}
             </div>
           ) : (
             <div className="leading-relaxed whitespace-pre-wrap">{message.content}</div>
@@ -239,8 +248,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </div>
         )}
 
-        {/* Sources - Collapsible drawer for assistant messages with sources */}
-        {message.role === "assistant" && (() => {
+        {/* Sources - Collapsible drawer (only shown after typewriter completes) */}
+        {message.role === "assistant" && !isAnimating && (() => {
           const sourcesList = Array.isArray(message.sources) ? message.sources : [];
           if (sourcesList.length === 0) return null;
 

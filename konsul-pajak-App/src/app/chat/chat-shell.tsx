@@ -47,6 +47,9 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Track the latest AI message ID for typewriter animation
+  const [newAssistantMessageId, setNewAssistantMessageId] = useState<number | null>(null);
+
   // Track if we're in the process of creating a new chat (to avoid showing "Loading pesan...")
   const isCreatingNewChat = useRef(false);
 
@@ -146,10 +149,15 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
         throw new Error("Gagal menentukan chat ID untuk percakapan.");
       }
 
-      await sendMessageMutation.mutateAsync({
+      const result = await sendMessageMutation.mutateAsync({
         chatId: targetChatId,
         message: text,
       });
+
+      // Track the new assistant message for typewriter animation
+      if (result.assistantMessage?.id) {
+        setNewAssistantMessageId(result.assistantMessage.id);
+      }
 
       await Promise.all([
         utils.chat.messages.invalidate({ chatId: targetChatId }),
@@ -177,6 +185,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     // Reset to new chat state
     setCurrentChatId(null);
     setOptimisticMessages([]);
+    setNewAssistantMessageId(null);
     setMessage("");
     // Use window.history to avoid page reload
     if (pathname !== "/chat") {
@@ -469,7 +478,11 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
               {hasActiveChat &&
                 messagesQuery.isSuccess &&
                 messagesQuery.data?.map((msg) => (
-                  <ChatMessage key={msg.id} message={msg} />
+                  <ChatMessage
+                    key={msg.id}
+                    message={msg}
+                    isNew={msg.id === newAssistantMessageId}
+                  />
                 ))}
 
               {/* Optimistic messages */}
