@@ -356,10 +356,23 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
               )}
             </Button>
             <Link href="/" className="flex items-center gap-2">
-              <div className="bg-accent text-accent-foreground flex h-8 w-8 items-center justify-center rounded-md font-bold">
+              <div className="bg-primary-foreground/20 flex h-8 w-8 items-center justify-center rounded-md font-bold text-sm">
                 KP
               </div>
-              <h1 className="text-lg font-bold">Konsul Pajak</h1>
+              <h1 className="text-lg font-bold hidden sm:block">Konsul Pajak</h1>
+            </Link>
+          </div>
+
+          {/* Toggle Tabs */}
+          <div className="flex items-center bg-white rounded-full p-1 shadow-sm">
+            <div className="px-5 py-2 rounded-full text-sm font-medium text-white bg-primary">
+              Konsul Pajak
+            </div>
+            <Link
+              href="/direktori"
+              className="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Direktori
             </Link>
           </div>
 
