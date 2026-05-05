@@ -16,6 +16,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const logoutMutation = api.admin.logout.useMutation({
     onSuccess: () => {
+      document.cookie = "admin_session=; path=/; max-age=0";
       window.location.href = "/admin/login"
     },
   })

@@ -15,7 +15,8 @@ export default function AdminLoginPage() {
   const router = useRouter()
 
   const loginMutation = api.admin.login.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      document.cookie = `admin_session=${data.token}; path=/; max-age=86400; samesite=lax`;
       router.push('/admin/dashboard')
     },
     onError: (err) => {
