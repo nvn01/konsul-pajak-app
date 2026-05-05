@@ -59,21 +59,10 @@ export const adminRouter = createTRPCRouter({
       }
 
       const token = generateToken(admin.id);
-      const cookieStore = await cookies();
-      cookieStore.set(COOKIE_NAME, token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 60 * 60 * 24, // 1 day
-      });
-
-      return { success: true };
+      return { success: true, token };
     }),
 
-  logout: publicProcedure.mutation(async () => {
-    const cookieStore = await cookies();
-    cookieStore.delete(COOKIE_NAME);
+  logout: publicProcedure.mutation(() => {
     return { success: true };
   }),
 
