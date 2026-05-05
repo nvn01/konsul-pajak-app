@@ -6,12 +6,12 @@ import { Users, MessageCircle, FileText, ThumbsUp, ThumbsDown, Scale } from 'luc
 import Link from 'next/link'
 
 const statCards = [
-  { key: 'users', label: 'Total Pengguna', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  { key: 'chats', label: 'Total Chat', icon: MessageCircle, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-  { key: 'messages', label: 'Total Pesan', icon: FileText, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-  { key: 'feedbackSuka', label: 'Feedback Suka', icon: ThumbsUp, color: 'text-green-500', bg: 'bg-green-500/10' },
-  { key: 'feedbackTidakSuka', label: 'Feedback Tidak Suka', icon: ThumbsDown, color: 'text-red-500', bg: 'bg-red-500/10' },
-  { key: 'peraturan', label: 'Total Peraturan', icon: Scale, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+  { key: 'users', label: 'Total Pengguna', icon: Users, color: 'text-sidebar-primary-foreground', bg: 'bg-sidebar-primary' },
+  { key: 'chats', label: 'Total Chat', icon: MessageCircle, color: 'text-sidebar-primary-foreground', bg: 'bg-sidebar-primary' },
+  { key: 'messages', label: 'Total Pesan', icon: FileText, color: 'text-sidebar-primary-foreground', bg: 'bg-sidebar-primary' },
+  { key: 'feedbackSuka', label: 'Feedback Suka', icon: ThumbsUp, color: 'text-sidebar-primary-foreground', bg: 'bg-sidebar-primary' },
+  { key: 'feedbackTidakSuka', label: 'Feedback Tidak Suka', icon: ThumbsDown, color: 'text-sidebar-primary-foreground', bg: 'bg-sidebar-primary' },
+  { key: 'peraturan', label: 'Total Peraturan', icon: Scale, color: 'text-sidebar-primary-foreground', bg: 'bg-sidebar-primary' },
 ] as const
 
 export default function AdminDashboardPage() {

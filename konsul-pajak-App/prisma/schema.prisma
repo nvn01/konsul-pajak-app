@@ -20,11 +20,10 @@ model User {
   emailVerified DateTime?
   image         String?
   accounts      Account[]
-  sessions      Session[]
-  
   // --- Relasi custom kita ---
   chats         Chat[]
   feedbacks     Feedback[]
+  reports       Report[]
 }
 
 model Account {
@@ -47,12 +46,18 @@ model Account {
   @@unique([provider, providerAccountId])
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Report {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  messageId Int?     // Optional, if the report is related to a specific message
+  content   String   @db.Text
+  type      String   // "saran" or "kesalahan"
+  createdAt DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -95,8 +100,9 @@ model Message {
   sources   Json?     // Menyimpan data sitasi (sources)
   createdAt DateTime  @default(now())
 
-  chat    Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  feedback Feedback? // Relasi 1-ke-1 opsional ke Feedback
+  chat      Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  feedback  Feedback? // Relasi 1-to-1 (optional, karena tidak semua pesan di-rate)
+  reports   Report[]
 
   @@index([chatId])
 }

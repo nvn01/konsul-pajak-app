@@ -256,5 +256,41 @@ export const chatRouter = createTRPCRouter({
 
       return updatedChat;
     }),
+
+  submitReport: protectedProcedure
+    .input(
+      z.object({
+        messageId: z.number().int().positive().optional(),
+        content: z.string().min(1, 'Pesan tidak boleh kosong').max(2000, 'Pesan terlalu panjang'),
+        type: z.enum(['saran', 'kesalahan']),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.messageId) {
+        const message = await ctx.db.message.findFirst({
+          where: {
+            id: input.messageId,
+            chat: {
+              userId: ctx.session.user.id,
+            },
+          },
+        });
+
+        if (!message) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Pesan tidak ditemukan' });
+        }
+      }
+
+      const report = await ctx.db.report.create({
+        data: {
+          userId: ctx.session.user.id,
+          messageId: input.messageId,
+          content: input.content,
+          type: input.type,
+        },
+      });
+
+      return report;
+    }),
 });
 
