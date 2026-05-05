@@ -157,9 +157,6 @@ export function ChatMessage({ message, isNew = false }: ChatMessageProps) {
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {shouldAnimate ? displayText : message.content}
               </ReactMarkdown>
-              {isAnimating && (
-                <span className="inline-block w-0.5 h-4 bg-foreground animate-pulse ml-0.5 align-text-bottom" />
-              )}
             </div>
           ) : (
             <div className="leading-relaxed whitespace-pre-wrap">{message.content}</div>
