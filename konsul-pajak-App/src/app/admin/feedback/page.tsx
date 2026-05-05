@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { api } from 'nvn/trpc/react'
 import { AdminLayout } from '@/components/admin-layout'
 
+import { ThumbsUp, ThumbsDown } from 'lucide-react'
+
 export default function AdminFeedbackPage() {
   const [page, setPage] = useState(1)
   const [ratingFilter, setRatingFilter] = useState<'suka' | 'tidak_suka' | undefined>(undefined)
@@ -30,13 +32,13 @@ export default function AdminFeedbackPage() {
               <button
                 key={val}
                 onClick={() => { setRatingFilter(val === 'all' ? undefined : val); setPage(1) }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                   isActive
                     ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                    : 'border border-border hover:bg-muted'
+                    : 'border border-border hover:bg-muted text-muted-foreground'
                 }`}
               >
-                {val === 'all' ? 'Semua' : val === 'suka' ? '👍 Suka' : '👎 Tidak Suka'}
+                {val === 'all' ? 'Semua' : val === 'suka' ? <><ThumbsUp className="w-3.5 h-3.5" /> Suka</> : <><ThumbsDown className="w-3.5 h-3.5" /> Tidak Suka</>}
               </button>
             )
           })}
@@ -70,7 +72,7 @@ export default function AdminFeedbackPage() {
                           ? 'bg-green-100 text-green-700'
                           : 'bg-red-100 text-red-700'
                       }`}>
-                        {item.rating === 'suka' ? '👍 Suka' : '👎 Tidak Suka'}
+                        {item.rating === 'suka' ? <><ThumbsUp className="w-3 h-3" /> Suka</> : <><ThumbsDown className="w-3 h-3" /> Tidak Suka</>}
                       </span>
                     </td>
                     <td className="px-4 py-3 max-w-[200px]">
