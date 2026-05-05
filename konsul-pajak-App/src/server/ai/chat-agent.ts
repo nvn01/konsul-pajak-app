@@ -167,41 +167,41 @@ function extractSources(response: any): SourceCitation[] {
     const chunks = groundingMetadata.groundingChunks ?? [];
     const supports = groundingMetadata.groundingSupports ?? [];
 
+    // Collect only chunk indices that are actually referenced by grounding supports
+    // This filters out irrelevant retrieved documents that weren't used in the answer
+    const referencedIndices = new Set<number>();
+    for (const support of supports) {
+      const indices = support.groundingChunkIndices ?? [];
+      for (const idx of indices) {
+        referencedIndices.add(idx);
+      }
+    }
+
     const sources: SourceCitation[] = [];
     const seenSources = new Set<string>();
 
-    // Extract from grounding chunks (retrieved document references)
-    for (const chunk of chunks) {
-      const retrievedContext = chunk.retrievedContext;
+    // Only include chunks that were actually referenced in the answer
+    for (let i = 0; i < chunks.length; i++) {
+      // If there are supports, only include referenced chunks
+      // If there are no supports at all, include all chunks as fallback
+      if (supports.length > 0 && !referencedIndices.has(i)) {
+        continue;
+      }
+
+      const chunk = chunks[i];
+      const retrievedContext = chunk?.retrievedContext;
       if (retrievedContext) {
-        const uri = retrievedContext.uri ?? "";
         const title = retrievedContext.title ?? "";
-        const sourceKey = title || uri || `Referensi ${sources.length + 1}`;
+        const sourceKey = title || `Referensi ${sources.length + 1}`;
 
         if (!seenSources.has(sourceKey)) {
           seenSources.add(sourceKey);
           sources.push({
             source: sourceKey,
-            snippet: chunk.web?.title ?? undefined,
           });
         }
       }
     }
-
-    // Extract from grounding supports (text snippets with source info)
-    for (const support of supports) {
-      const segment = support.segment;
-      if (segment?.text && sources.length > 0) {
-        // Attach snippet text to the first source that doesn't have one yet
-        const targetSource = sources.find((s) => !s.snippet);
-        if (targetSource) {
-          targetSource.snippet = segment.text.slice(0, 800);
-        }
-      }
-    }
-
-    // If no structured sources found, return empty
-    if (sources.length === 0) return [];
 
     return sources;
   } catch (error) {
