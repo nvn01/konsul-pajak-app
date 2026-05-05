@@ -4,6 +4,18 @@ import { useState } from "react"
 import { api } from "nvn/trpc/react"
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
+import { LogOut } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export default function DirektoriPage() {
   const { data: session } = useSession()
@@ -33,6 +45,10 @@ export default function DirektoriPage() {
     if (e.key === "Enter") handleSearch()
   }
 
+  const handleLogout = () => {
+    void signOut({ callbackUrl: "/" })
+  }
+
   const clearFilters = () => {
     setSearch("")
     setSearchInput("")
@@ -44,41 +60,73 @@ export default function DirektoriPage() {
   const hasActiveFilters = search || filterTopik || filterStatus || filterTahun
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      {/* Header - same style as chat */}
-      <header className="flex items-center justify-between border-b border-border px-4 py-3" style={{ backgroundColor: '#00CF9B' }}>
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white/20 font-bold text-white text-sm">
-            KP
+    <div className="flex h-screen flex-col">
+      {/* Header - exact same structure as chat-shell */}
+      <header className="bg-primary text-primary-foreground border-primary-foreground/10 border-b px-4 md:px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="bg-primary-foreground/20 flex h-8 w-8 items-center justify-center rounded-md font-bold text-sm">
+                KP
+              </div>
+              <h1 className="text-lg font-bold hidden sm:block">Konsul Pajak</h1>
+            </Link>
           </div>
-          <h1 className="text-lg font-bold text-white hidden sm:block">Konsul Pajak</h1>
-        </div>
 
-        {/* Toggle Tabs */}
-        <div className="flex items-center bg-white rounded-full p-1 shadow-sm">
-          <Link
-            href="/chat"
-            className="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            Konsul Pajak
-          </Link>
-          <div className="px-5 py-2 rounded-full text-sm font-medium text-white" style={{ backgroundColor: '#00CF9B' }}>
-            Direktori
-          </div>
-        </div>
-
-        {/* User avatar */}
-        <div className="flex items-center gap-2">
-          {session?.user && (
-            <div className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center text-white font-semibold text-sm">
-              {session.user.name?.charAt(0)?.toUpperCase() ?? "U"}
+          {/* Toggle Tabs */}
+          <div className="flex items-center bg-white rounded-full p-1 shadow-sm">
+            <Link
+              href="/chat"
+              className="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Konsul Pajak
+            </Link>
+            <div className="px-5 py-2 rounded-full text-sm font-medium text-sidebar-primary-foreground bg-sidebar-primary">
+              Direktori
             </div>
-          )}
+          </div>
+
+          {/* User avatar dropdown - same as chat */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="relative h-10 w-10 rounded-full p-0 cursor-pointer"
+              >
+                <Avatar className="h-10 w-10">
+                  <AvatarImage
+                    src={session?.user?.image ?? ""}
+                    alt={session?.user?.name ?? "User"}
+                  />
+                  <AvatarFallback className="bg-accent text-accent-foreground">
+                    {session?.user?.name?.charAt(0)?.toUpperCase() ?? "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {session?.user?.name}
+                  </p>
+                  <p className="text-muted-foreground text-xs leading-none">
+                    {session?.user?.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      {/* Main Content - no sidebar */}
+      <main className="flex-1 overflow-y-auto bg-background">
         <div className="mx-auto max-w-4xl px-4 py-6">
           {/* Search Bar */}
           <div className="flex gap-2 mb-4">
@@ -150,7 +198,7 @@ export default function DirektoriPage() {
             )}
           </div>
 
-          {/* Results count + sort */}
+          {/* Results count */}
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-muted-foreground">
               {peraturanQuery.isLoading
@@ -167,10 +215,10 @@ export default function DirektoriPage() {
                 href={item.url || "#"}
                 target={item.url ? "_blank" : undefined}
                 rel={item.url ? "noopener noreferrer" : undefined}
-                className="group block rounded-xl border border-border bg-card p-5 hover:shadow-md hover:border-primary/20 transition-all"
+                className="group block rounded-xl border border-border bg-card p-5 hover:shadow-md hover:border-sidebar-primary/40 transition-all"
               >
                 {/* Title */}
-                <h3 className="font-bold text-foreground mb-2 group-hover:text-[#00CF9B] transition-colors">
+                <h3 className="font-bold text-foreground mb-2 group-hover:text-sidebar-primary transition-colors">
                   {item.title}
                 </h3>
 
@@ -212,9 +260,9 @@ export default function DirektoriPage() {
                     {item.status.length > 15 ? item.status.slice(0, 15) + "..." : item.status}
                   </span>
 
-                  {/* Share / External link */}
+                  {/* External link */}
                   {item.url && (
-                    <span className="flex items-center gap-1.5 ml-auto group-hover:text-[#00CF9B] transition-colors">
+                    <span className="flex items-center gap-1.5 ml-auto group-hover:text-sidebar-primary transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M15 3h6v6" />
                         <path d="M10 14 21 3" />
@@ -238,8 +286,7 @@ export default function DirektoriPage() {
               <p className="text-muted-foreground mb-2">Tidak ada peraturan ditemukan.</p>
               <button
                 onClick={clearFilters}
-                className="text-sm hover:underline cursor-pointer"
-                style={{ color: '#00CF9B' }}
+                className="text-sm text-sidebar-primary hover:underline cursor-pointer"
               >
                 Reset filter
               </button>
