@@ -10,14 +10,17 @@ export const peraturanRouter = createTRPCRouter({
         status: z.string().optional(),
         tahun: z.string().optional(),
         search: z.string().optional(),
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(50).default(10),
       }).optional()
     )
     .query(async ({ ctx, input }) => {
       const where: Record<string, unknown> = {};
+      const page = input?.page ?? 1;
+      const limit = input?.limit ?? 10;
 
       if (input?.jenis) where.jenis = input.jenis;
       if (input?.topik) {
-        // topik can be comma-separated like "PPh, KUP" so use contains
         where.topik = { contains: input.topik };
       }
       if (input?.status) where.status = input.status;
@@ -31,10 +34,22 @@ export const peraturanRouter = createTRPCRouter({
         ];
       }
 
-      return ctx.db.peraturan.findMany({
-        where,
-        orderBy: [{ tahun: "desc" }, { nomor: "asc" }],
-      });
+      const [items, totalCount] = await Promise.all([
+        ctx.db.peraturan.findMany({
+          where,
+          orderBy: [{ tahun: "desc" }, { nomor: "asc" }],
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        ctx.db.peraturan.count({ where }),
+      ]);
+
+      return {
+        items,
+        totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+        page,
+      };
     }),
 
   // Get distinct values for filter dropdowns
