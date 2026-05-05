@@ -19,6 +19,64 @@ interface ChatMessageProps {
   message: ChatMessageData
 }
 
+// Collapsible sources drawer component
+function SourcesDrawer({ sources }: { sources: Array<{ source: string; page?: number; snippet?: string }> }) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between w-full px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+      >
+        <div className="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
+          </svg>
+          <span>Sumber Referensi ({sources.length})</span>
+        </div>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="px-4 pb-3 border-t border-border">
+          <ul className="space-y-1.5 pt-2.5">
+            {sources.map((source, idx) => (
+              <li key={idx} className="flex items-start gap-2 text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-1 shrink-0 text-muted-foreground">
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <a
+                  href="#"
+                  onClick={(e) => e.preventDefault()}
+                  className="text-primary hover:underline cursor-pointer"
+                >
+                  {source.source}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function ChatMessage({ message }: ChatMessageProps) {
   const [selectedFeedback, setSelectedFeedback] = useState<"suka" | "tidak_suka" | null>(
     message.feedback?.rating ?? null
@@ -181,24 +239,15 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </div>
         )}
 
-        {/* Sources - Only for assistant messages with sources */}
-        {message.role === "assistant" && message.sources && message.sources.length > 0 && (
-          <div className="bg-muted/50 rounded-lg p-4 border border-border">
-            <div className="text-sm font-semibold mb-2 text-primary">Sumber Referensi (UU Pajak):</div>
-            <ul className="space-y-1">
-              {message.sources.map((source, idx) => (
-                <li key={idx} className="text-sm text-muted-foreground space-y-1">
-                  <div>• {source.source}{source.page ? `, Halaman ${source.page}` : ""}</div>
-                  {source.snippet && (
-                    <p className="text-xs text-muted-foreground/80 leading-relaxed">
-                      {source.snippet}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* Sources - Collapsible drawer for assistant messages with sources */}
+        {message.role === "assistant" && (() => {
+          const sourcesList = Array.isArray(message.sources) ? message.sources : [];
+          if (sourcesList.length === 0) return null;
+
+          return (
+            <SourcesDrawer sources={sourcesList} />
+          );
+        })()}
       </div>
 
       {/* User Avatar - Right side for user */}
