@@ -455,47 +455,6 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                     <h2 className="text-3xl md:text-4xl font-semibold mb-8">
                       Ada yang bisa dibantu terkait perpajakan hari ini?
                     </h2>
-
-                    {/* Disclaimer Alert */}
-                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 text-left">
-                      <div className="flex gap-3">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                          <line x1="12" y1="9" x2="12" y2="13" />
-                          <line x1="12" y1="17" x2="12.01" y2="17" />
-                        </svg>
-                        <div>
-                          <h3 className="font-semibold text-yellow-700 dark:text-yellow-400 mb-1">
-                            Aplikasi Demo Untuk Dosen Perpajakan di Universitas Pamulang
-                          </h3>
-                          <p className="text-sm text-yellow-700/90 dark:text-yellow-400/90 mb-3">
-                            Aplikasi ini masih dalam tahap pengembangan. Jawaban yang diberikan mungkin belum 100% akurat.
-                          </p>
-                          <div className="text-sm text-yellow-700/90 dark:text-yellow-400/90">
-                            <p className="font-semibold mb-2">Data yang digunakan saat ini  :</p>
-                            <ul className="list-disc list-inside space-y-1 ml-2">
-                              <li>UU Nomor 6 Tahun 2023 - Penetapan Peraturan Pemerintah Pengganti UU tentang Cipta Kerja</li>
-                              <li>UU Nomor 7 Tahun 2021 - Harmonisasi Peraturan Perpajakan</li>
-                              <li>UU Nomor 11 Tahun 2020 - Cipta Kerja</li>
-                              <li>UU Nomor 16 Tahun 2009 - Ketentuan Umum dan Tata Cara Perpajakan</li>
-                              <li>UU Nomor 28 Tahun 2007 - Ketentuan Umum dan Tata Cara Perpajakan</li>
-                              <li>UU Nomor 16 Tahun 2000 - Ketentuan Umum dan Tata Cara Perpajakan</li>
-                              <li>UU Nomor 9 Tahun 1994 - Ketentuan Umum dan Tata Cara Perpajakan</li>
-                              <li>SDSN 202 - Susunan Dalam Satu Naskah 2025</li>
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}

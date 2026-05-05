@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -86,7 +88,15 @@ export function ChatMessage({ message }: ChatMessageProps) {
             : 'bg-card border border-border'
             }`}
         >
-          <div className="leading-relaxed whitespace-pre-wrap">{message.content}</div>
+          {message.role === 'assistant' ? (
+            <div className="prose-chat text-sm">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <div className="leading-relaxed whitespace-pre-wrap">{message.content}</div>
+          )}
         </div>
 
         {/* Feedback Buttons - Only for assistant messages */}
