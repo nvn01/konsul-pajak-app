@@ -113,3 +113,20 @@ model Feedback {
 
   @@index([userId])
 }
+
+model Peraturan {
+  id        Int      @id @default(autoincrement())
+  title     String
+  nomor     String   @unique
+  jenis     String   // "Undang-undang", etc.
+  topik     String   // "PPh", "PPN", "KUP", "PBB", "BPHTB", "Bea Meterai", "Other", etc.
+  tahun     String
+  status    String   // "Berlaku", "Diubah atau Disempurnakan", "Dicabut"
+  deskripsi String   @default("") @db.Text
+  url       String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([jenis])
+  @@index([topik])
+  @@index([status])
+}
