@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { api } from 'nvn/trpc/react'
 import { AdminLayout } from '@/components/admin-layout'
 
+import { ThumbsUp, ThumbsDown } from 'lucide-react'
+
 export default function AdminChatsPage() {
   const [page, setPage] = useState(1)
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
@@ -56,12 +58,12 @@ export default function AdminChatsPage() {
                   {new Date(msg.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                 </span>
                 {msg.feedback && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
                     msg.feedback.rating === 'suka'
                       ? 'bg-green-100 text-green-700'
                       : 'bg-red-100 text-red-700'
                   }`}>
-                    {msg.feedback.rating === 'suka' ? '👍 Suka' : '👎 Tidak Suka'}
+                    {msg.feedback.rating === 'suka' ? <><ThumbsUp className="w-3 h-3" /> Suka</> : <><ThumbsDown className="w-3 h-3" /> Tidak Suka</>}
                   </span>
                 )}
               </div>
