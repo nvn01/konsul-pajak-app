@@ -365,7 +365,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
 
           {/* Toggle Tabs */}
           <div className="flex items-center bg-white rounded-full p-1 shadow-sm">
-            <div className="px-5 py-2 rounded-full text-sm font-medium text-white bg-primary">
+            <div className="px-5 py-2 rounded-full text-sm font-medium text-sidebar-primary-foreground bg-sidebar-primary">
               Konsul Pajak
             </div>
             <Link
