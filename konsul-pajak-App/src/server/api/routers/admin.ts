@@ -201,6 +201,43 @@ export const adminRouter = createTRPCRouter({
       return { items, total, totalPages: Math.ceil(total / limit), page };
     }),
 
+  // ─── Laporan (Reports) ───────────────────────────────
+  reports: adminProcedure
+    .input(
+      z.object({
+        page: z.number().min(1).default(1),
+        limit: z.number().default(10),
+        type: z.enum(["saran", "kesalahan"]).optional(),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const page = input?.page ?? 1;
+      const limit = input?.limit ?? 10;
+      const where = input?.type ? { type: input.type } : {};
+
+      const [items, total] = await Promise.all([
+        ctx.db.report.findMany({
+          where,
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            type: true,
+            content: true,
+            createdAt: true,
+            user: { select: { name: true, email: true } },
+            message: {
+              select: { content: true } // Context of what they were reporting, if attached to a message
+            }
+          },
+        }),
+        ctx.db.report.count({ where }),
+      ]);
+
+      return { items, total, totalPages: Math.ceil(total / limit), page };
+    }),
+
   // ─── Peraturan CRUD ────────────────────────────────
   peraturanList: adminProcedure
     .input(z.object({ page: z.number().min(1).default(1), limit: z.number().default(10) }).optional())

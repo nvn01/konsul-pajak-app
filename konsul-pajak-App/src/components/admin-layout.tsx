@@ -9,6 +9,7 @@ const navItems = [
   { label: "Pengguna", href: "/admin/users" },
   { label: "Chat", href: "/admin/chats" },
   { label: "Feedback", href: "/admin/feedback" },
+  { label: "Laporan", href: "/admin/laporan" },
   { label: "Peraturan", href: "/admin/peraturan" },
 ]
 
