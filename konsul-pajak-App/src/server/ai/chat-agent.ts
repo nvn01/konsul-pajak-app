@@ -105,6 +105,7 @@ export type SourceCitation = {
   page?: number;
   snippet?: string;
   kutipan?: string;
+  url?: string;
 };
 
 export interface MessageHistory {
