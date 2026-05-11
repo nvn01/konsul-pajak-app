@@ -23,7 +23,7 @@ interface ChatMessageProps {
 }
 
 // Collapsible sources drawer component
-function SourcesDrawer({ sources }: { sources: Array<{ source: string; page?: number; snippet?: string }> }) {
+function SourcesDrawer({ sources }: { sources: Array<{ source: string; page?: number; snippet?: string; kutipan?: string }> }) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -57,20 +57,27 @@ function SourcesDrawer({ sources }: { sources: Array<{ source: string; page?: nu
 
       {isOpen && (
         <div className="px-4 pb-3 border-t border-border">
-          <ul className="space-y-1.5 pt-2.5">
+          <ul className="space-y-3 pt-2.5">
             {sources.map((source, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-1 shrink-0 text-muted-foreground">
-                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-                <a
-                  href="#"
-                  onClick={(e) => e.preventDefault()}
-                  className="text-primary hover:underline cursor-pointer"
-                >
-                  {source.source}
-                </a>
+              <li key={idx} className="flex flex-col gap-1 text-sm">
+                <div className="flex items-start gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-1 shrink-0 text-muted-foreground">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  <a
+                    href="#"
+                    onClick={(e) => e.preventDefault()}
+                    className="text-primary font-medium hover:underline cursor-pointer"
+                  >
+                    {source.source}
+                  </a>
+                </div>
+                {source.kutipan && (
+                  <div className="ml-5 mt-1 rounded bg-muted/50 p-2 text-xs text-muted-foreground italic border-l-2 border-primary/30">
+                    "{source.kutipan}"
+                  </div>
+                )}
               </li>
             ))}
           </ul>
