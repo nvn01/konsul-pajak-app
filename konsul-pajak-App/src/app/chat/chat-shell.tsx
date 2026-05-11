@@ -21,6 +21,43 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { api } from "nvn/trpc/react";
+function ThinkingIndicator() {
+  const [textIndex, setTextIndex] = useState(0);
+  const loadingTexts = [
+    "Menganalisis pertanyaan...",
+    "Mencari referensi peraturan...",
+    "Memeriksa pasal dan ayat yang relevan...",
+    "Menyusun analisis hukum...",
+    "Menyiapkan jawaban akhir...",
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTextIndex((prev) => (prev + 1 < loadingTexts.length ? prev + 1 : prev));
+    }, 3500); // Change text every 3.5 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex gap-3 justify-start">
+      <div className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shrink-0">
+        AI
+      </div>
+      <div className="max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm bg-card border border-border">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 shrink-0">
+            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]"></div>
+            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]"></div>
+            <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground"></div>
+          </div>
+          <span className="text-sm text-muted-foreground transition-all duration-300 animate-in fade-in slide-in-from-bottom-1" key={textIndex}>
+            {loadingTexts[textIndex]}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface ChatShellProps {
   initialChatId: string | null;
@@ -513,23 +550,7 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
               ))}
 
               {/* AI Thinking Indicator */}
-              {isAIThinking && (
-                <div className="flex gap-3 justify-start">
-                  <div className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                    AI
-                  </div>
-                  <div className="max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm bg-card border border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1">
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]"></div>
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]"></div>
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground"></div>
-                      </div>
-                      <span className="text-sm text-muted-foreground">AI sedang berpikir...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {isAIThinking && <ThinkingIndicator />}
 
               {hasActiveChat && messagesQuery.isError && (
                 <div className="text-destructive py-8 text-center">
