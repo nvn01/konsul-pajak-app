@@ -110,12 +110,39 @@ export const chatRouter = createTRPCRouter({
 
       const { answer, sources } = await answerTaxQuestion(trimmedMessage, messageHistory);
 
+      // Augment sources with URLs from Peraturan table
+      const augmentedSources = await Promise.all(
+        sources.map(async (src) => {
+          let searchStr = src.source;
+          // Try to extract just "X TAHUN YYYY" for better matching
+          const numMatch = src.source.match(/Nomor\s+(\d+\s+TAHUN\s+\d+)/i) || src.source.match(/No\.?\s+(\d+\s+TAHUN\s+\d+)/i);
+          if (numMatch && numMatch[1]) {
+            searchStr = numMatch[1];
+          }
+
+          const peraturan = await ctx.db.peraturan.findFirst({
+            where: {
+              OR: [
+                { nomor: { contains: searchStr, mode: 'insensitive' } },
+                { title: { contains: searchStr, mode: 'insensitive' } },
+              ],
+            },
+            select: { url: true },
+          });
+
+          return {
+            ...src,
+            url: peraturan?.url ?? undefined,
+          };
+        })
+      );
+
       const assistantMessage = await ctx.db.message.create({
         data: {
           chatId: chat.id,
           role: 'assistant',
           content: answer,
-          sources,
+          sources: augmentedSources,
         },
       });
 
