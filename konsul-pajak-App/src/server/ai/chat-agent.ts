@@ -48,20 +48,30 @@ const SYSTEM_PROMPT = `Kamu adalah **Konsul Pajak**, asisten AI ahli perpajakan 
 - Akhiri dengan **catatan** jika ada ketentuan peralihan atau pengecualian yang perlu diperhatikan.
 
 ## DAFTAR REFERENSI (WAJIB)
-Di akhir setiap jawaban, kamu WAJIB menambahkan daftar referensi dalam format berikut.
+Di akhir setiap jawaban, kamu WAJIB menambahkan daftar referensi dalam format JSON berikut.
 Cantumkan HANYA undang-undang yang benar-benar kamu sebutkan atau kutip dalam jawaban di atas.
-JANGAN cantumkan undang-undang yang tidak relevan dengan jawaban.
+Untuk setiap referensi, WAJIB sertakan "kutipan" yang berisi bunyi spesifik dari Pasal/Ayat yang relevan sesuai dokumen yang di-retrieve.
 
 Format (HARUS persis seperti ini):
 
 <<<REFERENSI>>>
-[{"source": "UU Nomor X Tahun YYYY"}, {"source": "UU Nomor Z Tahun YYYY"}]
+[
+  {
+    "source": "UU Nomor X Tahun YYYY",
+    "kutipan": "Pasal Z ayat (W): [Bunyi kutipan pasal/ayat di sini...]"
+  }
+]
 <<<END_REFERENSI>>>
 
-Contoh: jika jawaban kamu menyebutkan UU Nomor 7 Tahun 2021 dan UU Nomor 42 Tahun 2009, maka:
+Contoh:
 
 <<<REFERENSI>>>
-[{"source": "UU Nomor 7 Tahun 2021"}, {"source": "UU Nomor 42 Tahun 2009"}]
+[
+  {
+    "source": "UU Nomor 7 Tahun 2021",
+    "kutipan": "Pasal 17 ayat (1) huruf a: Wajib Pajak orang pribadi dalam negeri dikenai Pajak Penghasilan dengan tarif..."
+  }
+]
 <<<END_REFERENSI>>>
 
 ## CAKUPAN PENGETAHUAN
@@ -94,6 +104,7 @@ export type SourceCitation = {
   source: string;
   page?: number;
   snippet?: string;
+  kutipan?: string;
 };
 
 export interface MessageHistory {
@@ -206,6 +217,7 @@ function parseAnswerAndSources(rawText: string): {
           .filter((item: any) => item && typeof item.source === "string")
           .map((item: any) => ({
             source: item.source,
+            kutipan: item.kutipan,
           }));
       }
     } catch (jsonError) {
