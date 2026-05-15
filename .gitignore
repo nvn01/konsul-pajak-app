@@ -111,4 +111,12 @@ yarn-error.log*
 # Reference folder
 reference/
 
+# Test / scratch files
+UU-test1.html
+konsul-pajak-App/test_vertex.cjs
+konsul-pajak-App/chartdb-schema.sql
+
+# Production env
+.env.production
+
 .gitignore
