@@ -20,7 +20,9 @@ interface UseTypewriterReturn {
 
 /**
  * Hook that progressively reveals text character-by-character.
- * Only animates when `enabled` is true (for new messages only, not history).
+ * Uses time-based calculation so animation continues even when the
+ * browser tab is in the background (no reliance on setInterval which
+ * gets throttled by the browser).
  */
 export function useTypewriter(
   fullText: string,
@@ -31,7 +33,8 @@ export function useTypewriter(
 
   const [displayLength, setDisplayLength] = useState(enabled ? 0 : fullText.length)
   const [isAnimating, setIsAnimating] = useState(enabled)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const startTimeRef = useRef<number | null>(null)
   const fullTextRef = useRef(fullText)
 
   // Keep ref in sync
@@ -48,25 +51,34 @@ export function useTypewriter(
     // Start from 0 when first enabled with text
     if (fullText.length > 0 && displayLength === 0) {
       setIsAnimating(true)
+      startTimeRef.current = performance.now()
 
-      timerRef.current = setInterval(() => {
-        setDisplayLength((prev) => {
-          const next = prev + chunkSize
-          if (next >= fullTextRef.current.length) {
-            // Animation complete
-            if (timerRef.current) clearInterval(timerRef.current)
-            setIsAnimating(false)
-            return fullTextRef.current.length
-          }
-          return next
-        })
-      }, speed)
+      const animate = (now: number) => {
+        const elapsed = now - (startTimeRef.current ?? now)
+        // Calculate how many characters should be visible based on real elapsed time
+        // Each "tick" of `speed` ms reveals `chunkSize` characters
+        const charsToShow = Math.floor((elapsed / speed) * chunkSize)
+        const targetLength = Math.min(charsToShow, fullTextRef.current.length)
+
+        if (targetLength >= fullTextRef.current.length) {
+          // Animation complete
+          setDisplayLength(fullTextRef.current.length)
+          setIsAnimating(false)
+          rafRef.current = null
+          return
+        }
+
+        setDisplayLength(targetLength)
+        rafRef.current = requestAnimationFrame(animate)
+      }
+
+      rafRef.current = requestAnimationFrame(animate)
     }
 
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
       }
     }
     // Only run on mount/enabled change, not on every displayLength change
@@ -81,9 +93,9 @@ export function useTypewriter(
   }, [fullText, isAnimating])
 
   const skip = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
-      timerRef.current = null
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
     }
     setDisplayLength(fullTextRef.current.length)
     setIsAnimating(false)
