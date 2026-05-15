@@ -34,7 +34,7 @@ function ThinkingIndicator() {
   useEffect(() => {
     const interval = setInterval(() => {
       setTextIndex((prev) => (prev + 1 < loadingTexts.length ? prev + 1 : prev));
-    }, 3500); // Change text every 3.5 seconds
+    }, 5000); // Change text every 5 seconds
     return () => clearInterval(interval);
   }, []);
 
