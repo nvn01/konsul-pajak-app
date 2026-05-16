@@ -20,6 +20,8 @@ interface ChatMessageProps {
   message: ChatMessageData
   /** Whether this message was just received (triggers typewriter animation) */
   isNew?: boolean
+  /** Hide feedback/report actions (for guest users) */
+  hideActions?: boolean
 }
 
 // Collapsible sources drawer component
@@ -97,7 +99,7 @@ function SourcesDrawer({ sources }: { sources: Array<{ source: string; page?: nu
   )
 }
 
-export function ChatMessage({ message, isNew = false }: ChatMessageProps) {
+export function ChatMessage({ message, isNew = false, hideActions = false }: ChatMessageProps) {
   // Typewriter animation for new assistant messages
   const shouldAnimate = isNew && message.role === "assistant"
   const { displayText, isAnimating, skip } = useTypewriter(message.content, shouldAnimate)
@@ -208,7 +210,7 @@ export function ChatMessage({ message, isNew = false }: ChatMessageProps) {
           </div>
 
           {/* Feedback Buttons - Only for assistant messages */}
-          {message.role === 'assistant' && (
+          {message.role === 'assistant' && !hideActions && (
             <div className="flex gap-2 items-center">
               <Button
                 variant="ghost"
