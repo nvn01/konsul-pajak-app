@@ -4,14 +4,15 @@ import Link from "next/link";
 
 /**
  * SignupPrompt — popup/banner shown to guest users after their 1 free message.
- * Styled similar to the ChatGPT-style "Sign up to keep chatting" banner.
  */
 interface SignupPromptProps {
   /** Whether to show as a fixed overlay modal (true) or inline banner (false) */
   variant?: "modal" | "banner";
+  /** Callback to dismiss the prompt */
+  onDismiss?: () => void;
 }
 
-export function SignupPrompt({ variant = "banner" }: SignupPromptProps) {
+export function SignupPrompt({ variant = "banner", onDismiss }: SignupPromptProps) {
   if (variant === "modal") {
     return (
       <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4">
@@ -24,10 +25,10 @@ export function SignupPrompt({ variant = "banner" }: SignupPromptProps) {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-bold text-foreground">
-                Daftar untuk melanjutkan chat
+                Masuk dengan email untuk melanjutkan chat
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Daftar sekarang untuk mendapatkan 100 kredit pesan gratis dan menyimpan riwayat percakapan Anda.
+                Masuk untuk menyimpan riwayat percakapan dan melanjutkan konsultasi perpajakan Anda.
               </p>
             </div>
           </div>
@@ -37,14 +38,15 @@ export function SignupPrompt({ variant = "banner" }: SignupPromptProps) {
               href="/login"
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground px-6 py-3 text-sm font-semibold shadow-sm hover:bg-primary/90 transition-colors"
             >
-              Daftar Gratis
+              Masuk
             </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card text-foreground px-6 py-3 text-sm font-medium hover:bg-muted transition-colors"
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card text-foreground px-6 py-3 text-sm font-medium hover:bg-muted transition-colors cursor-pointer"
             >
-              Sudah punya akun? Masuk
-            </Link>
+              Nanti aja
+            </button>
           </div>
         </div>
       </div>
@@ -63,17 +65,17 @@ export function SignupPrompt({ variant = "banner" }: SignupPromptProps) {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-foreground">
-              Daftar untuk melanjutkan chat
+              Masuk dengan email untuk melanjutkan chat
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Daftar sekarang untuk mendapatkan 100 kredit pesan gratis dan menyimpan riwayat percakapan.
+              Masuk untuk menyimpan riwayat percakapan dan melanjutkan konsultasi.
             </p>
           </div>
           <Link
             href="/login"
             className="shrink-0 inline-flex items-center gap-2 rounded-full border border-border bg-card text-foreground px-4 py-2 text-sm font-semibold hover:bg-muted transition-colors"
           >
-            Daftar Gratis
+            Masuk
           </Link>
         </div>
       </div>

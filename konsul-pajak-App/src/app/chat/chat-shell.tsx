@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, Menu, X, Send, Loader2 } from "lucide-react";
+import { LogOut, Menu, X, Send, Loader2, ClipboardList, History, MessageCircle } from "lucide-react";
 
 import { ChatMessage } from "@/components/chat-message";
 import { PublicHeader } from "@/components/public-header";
@@ -74,8 +74,13 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
   const [message, setMessage] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Guest mode state
-  const [guestMessageSent, setGuestMessageSent] = useState(false);
+  // Guest mode state — persist in localStorage so refresh doesn't reset
+  const [guestMessageSent, setGuestMessageSent] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("kp_guest_sent") === "1";
+    }
+    return false;
+  });
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [showCreditsExhausted, setShowCreditsExhausted] = useState(false);
 
@@ -211,6 +216,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
         }]);
 
         setGuestMessageSent(true);
+        localStorage.setItem("kp_guest_sent", "1");
         // Show signup prompt after a short delay
         setTimeout(() => setShowSignupPrompt(true), 1500);
         return;
@@ -462,15 +468,6 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Credit indicator */}
-            {creditsQuery.data && (
-              <div className="hidden sm:flex items-center gap-1.5 text-xs text-primary-foreground/70 bg-primary-foreground/10 rounded-full px-3 py-1.5">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-                </svg>
-                {creditsQuery.data.credits} kredit
-              </div>
-            )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -498,11 +495,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
                   <p className="text-muted-foreground text-xs leading-none">
                     {session?.user?.email}
                   </p>
-                  {creditsQuery.data && (
-                    <p className="text-muted-foreground text-xs leading-none mt-1">
-                      {creditsQuery.data.credits} kredit tersisa
-                    </p>
-                  )}
+
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -550,28 +543,20 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
           `}>
             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sidebar-primary/20 text-sidebar-primary mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                  <polyline points="10 17 15 12 10 7" />
-                  <line x1="15" x2="3" y1="12" y2="12" />
-                </svg>
+                <LogOut className="h-6 w-6 rotate-180" />
               </div>
               <h3 className="text-sm font-bold text-sidebar-foreground mb-2">Masuk untuk fitur lengkap</h3>
-              <ul className="text-xs text-sidebar-foreground/70 space-y-2 mb-6 text-left">
-                <li className="flex items-start gap-2">
-                  <span>📋</span>
+              <ul className="text-xs text-sidebar-foreground/70 space-y-3 mb-6 text-left">
+                <li className="flex items-center gap-2.5">
+                  <ClipboardList className="h-3.5 w-3.5 shrink-0 text-sidebar-primary" />
                   <span>Simpan riwayat percakapan</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span>🔍</span>
+                <li className="flex items-center gap-2.5">
+                  <History className="h-3.5 w-3.5 shrink-0 text-sidebar-primary" />
                   <span>Akses riwayat chat kapan saja</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span>💬</span>
-                  <span>Dapatkan 100 kredit pesan gratis</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span>⭐</span>
+                <li className="flex items-center gap-2.5">
+                  <MessageCircle className="h-3.5 w-3.5 shrink-0 text-sidebar-primary" />
                   <span>Beri feedback pada jawaban AI</span>
                 </li>
               </ul>
@@ -789,7 +774,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
 
       {/* Guest signup prompt modal */}
       {showSignupPrompt && isGuest && (
-        <SignupPrompt variant="modal" />
+        <SignupPrompt variant="modal" onDismiss={() => setShowSignupPrompt(false)} />
       )}
 
       {/* Credits exhausted modal */}
