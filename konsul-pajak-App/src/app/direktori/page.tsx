@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
 import { LogOut } from "lucide-react"
 
+import { PublicHeader } from "@/components/public-header"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -69,7 +70,10 @@ export default function DirektoriPage() {
 
   return (
     <div className="flex h-screen flex-col">
-      {/* Header - exact same structure as chat-shell */}
+      {/* Header — Guest vs Authenticated */}
+      {!session ? (
+        <PublicHeader />
+      ) : (
       <header className="bg-primary text-primary-foreground border-primary-foreground/10 border-b px-4 md:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -94,7 +98,7 @@ export default function DirektoriPage() {
             </div>
           </div>
 
-          {/* User avatar dropdown - same as chat */}
+          {/* User avatar dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -132,6 +136,7 @@ export default function DirektoriPage() {
           </DropdownMenu>
         </div>
       </header>
+      )}
 
       {/* Main Content - no sidebar */}
       <main className="flex-1 overflow-y-auto bg-background">

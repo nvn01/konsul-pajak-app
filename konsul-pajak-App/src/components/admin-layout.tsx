@@ -11,6 +11,7 @@ const navItems = [
   { label: "Feedback", href: "/admin/feedback" },
   { label: "Laporan", href: "/admin/laporan" },
   { label: "Peraturan", href: "/admin/peraturan" },
+  { label: "Kuota", href: "/admin/quota" },
 ]
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
