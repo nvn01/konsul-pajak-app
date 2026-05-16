@@ -635,7 +635,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
 
               {/* Optimistic messages */}
               {optimisticMessages.map((msg) => (
-                <ChatMessage key={msg.id} message={msg as any} />
+                <ChatMessage key={msg.id} message={msg as any} hideActions={isGuest} />
               ))}
 
               {/* AI Thinking Indicator */}
