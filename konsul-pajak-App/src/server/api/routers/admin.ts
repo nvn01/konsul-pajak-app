@@ -284,4 +284,117 @@ export const adminRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return ctx.db.peraturan.delete({ where: { id: input.id } });
     }),
+
+  // ─── Quota Management ─────────────────────────────────
+
+  quotaConfig: adminProcedure.query(async ({ ctx }) => {
+    // Upsert: create default config if it doesn't exist
+    const config = await ctx.db.quotaConfig.upsert({
+      where: { id: 1 },
+      create: { id: 1 },
+      update: {},
+    });
+    return config;
+  }),
+
+  updateQuotaConfig: adminProcedure
+    .input(
+      z.object({
+        defaultCredits: z.number().min(1).max(10000),
+        guestMessageLimit: z.number().min(0).max(10),
+        spamTimeWindowSec: z.number().min(5).max(300),
+        minMessageLength: z.number().min(1).max(100),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.quotaConfig.upsert({
+        where: { id: 1 },
+        create: { id: 1, ...input },
+        update: input,
+      });
+    }),
+
+  userCredits: adminProcedure
+    .input(
+      z.object({
+        page: z.number().min(1).default(1),
+        limit: z.number().default(10),
+        flaggedOnly: z.boolean().default(false),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const page = input?.page ?? 1;
+      const limit = input?.limit ?? 10;
+      const where = input?.flaggedOnly ? { isFlagged: true } : {};
+
+      const [items, total] = await Promise.all([
+        ctx.db.user.findMany({
+          where,
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: { credits: "asc" },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            credits: true,
+            creditCostPerMsg: true,
+            isFlagged: true,
+            spamStreak: true,
+            lastMessageAt: true,
+            _count: { select: { chats: true } },
+          },
+        }),
+        ctx.db.user.count({ where }),
+      ]);
+
+      return { items, total, totalPages: Math.ceil(total / limit), page };
+    }),
+
+  adjustUserCredits: adminProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        credits: z.number().min(0).max(10000),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.user.update({
+        where: { id: input.userId },
+        data: { credits: input.credits },
+      });
+    }),
+
+  toggleUserFlag: adminProcedure
+    .input(z.object({ userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({ where: { id: input.userId } });
+      if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return ctx.db.user.update({
+        where: { id: input.userId },
+        data: {
+          isFlagged: !user.isFlagged,
+          // When flagging, force cost to 3; when unflagging, reset to 1
+          creditCostPerMsg: user.isFlagged ? 1 : 3,
+        },
+      });
+    }),
+
+  resetUserQuota: adminProcedure
+    .input(z.object({ userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const config = await ctx.db.quotaConfig.findFirst({ where: { id: 1 } });
+      const defaultCredits = config?.defaultCredits ?? 100;
+
+      return ctx.db.user.update({
+        where: { id: input.userId },
+        data: {
+          credits: defaultCredits,
+          creditCostPerMsg: 1,
+          spamStreak: 0,
+          isFlagged: false,
+        },
+      });
+    }),
 });

@@ -2,13 +2,141 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
 import { answerTaxQuestion, type SourceCitation } from 'nvn/server/ai/chat-agent';
-import { createTRPCRouter, protectedProcedure } from 'nvn/server/api/trpc';
+import { createTRPCRouter, protectedProcedure, publicProcedure } from 'nvn/server/api/trpc';
 
 const chatIdInput = z.object({
   chatId: z.string().uuid(),
 });
 
+// ---------------------------------------------------------------------------
+// Helper: Load quota config (singleton) with fallback defaults
+// ---------------------------------------------------------------------------
+async function getQuotaConfig(db: any) {
+  const config = await db.quotaConfig.findFirst({ where: { id: 1 } });
+  return {
+    defaultCredits: config?.defaultCredits ?? 100,
+    guestMessageLimit: config?.guestMessageLimit ?? 1,
+    spamTimeWindowSec: config?.spamTimeWindowSec ?? 30,
+    minMessageLength: config?.minMessageLength ?? 10,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Helper: Detect spam and compute credit cost
+// ---------------------------------------------------------------------------
+async function computeCreditCost(
+  db: any,
+  userId: string,
+  message: string,
+  chatId: string,
+  quotaConfig: Awaited<ReturnType<typeof getQuotaConfig>>,
+) {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      lastMessageAt: true,
+      spamStreak: true,
+      creditCostPerMsg: true,
+      isFlagged: true,
+    },
+  });
+
+  if (!user) return { cost: 1, isSpam: false };
+
+  // If user is flagged by admin, always cost 3
+  if (user.isFlagged) {
+    return { cost: 3, isSpam: true };
+  }
+
+  let isSpam = false;
+
+  // Check 1: Time-based spam (messages too fast)
+  if (user.lastMessageAt) {
+    const timeSinceLastMsg = (Date.now() - new Date(user.lastMessageAt).getTime()) / 1000;
+    if (timeSinceLastMsg < quotaConfig.spamTimeWindowSec) {
+      isSpam = true;
+    }
+  }
+
+  // Check 2: Message too short
+  if (message.trim().length < quotaConfig.minMessageLength) {
+    isSpam = true;
+  }
+
+  // Check 3: Repeated message (same as last message)
+  if (!isSpam) {
+    const lastMessage = await db.message.findFirst({
+      where: { chat: { userId }, role: 'user' },
+      orderBy: { createdAt: 'desc' },
+      select: { content: true },
+    });
+    if (lastMessage && lastMessage.content.trim().toLowerCase() === message.trim().toLowerCase()) {
+      isSpam = true;
+    }
+  }
+
+  // Calculate cost based on spam streak
+  let newSpamStreak = isSpam ? user.spamStreak + 1 : 0;
+  let cost = 1;
+
+  if (isSpam) {
+    // Escalating cost: 2 → 3 → 4 (capped at 4)
+    cost = Math.min(2 + Math.floor(newSpamStreak / 2), 4);
+  }
+
+  // Update user's spam tracking
+  await db.user.update({
+    where: { id: userId },
+    data: {
+      lastMessageAt: new Date(),
+      spamStreak: newSpamStreak,
+      creditCostPerMsg: cost,
+    },
+  });
+
+  return { cost, isSpam };
+}
+
 export const chatRouter = createTRPCRouter({
+  // ─── Credit Info (for logged-in users) ─────────────────
+  getCredits: protectedProcedure.query(async ({ ctx }) => {
+    const user = await ctx.db.user.findUnique({
+      where: { id: ctx.session.user.id },
+      select: {
+        credits: true,
+        creditCostPerMsg: true,
+        isFlagged: true,
+        spamStreak: true,
+      },
+    });
+
+    return {
+      credits: user?.credits ?? 0,
+      creditCostPerMsg: user?.creditCostPerMsg ?? 1,
+      isFlagged: user?.isFlagged ?? false,
+    };
+  }),
+
+  // ─── Guest Message (no auth required, single-turn, no DB save) ─────
+  guestMessage: publicProcedure
+    .input(
+      z.object({
+        message: z.string().min(1, 'Pesan tidak boleh kosong').max(2000, 'Pesan terlalu panjang'),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const trimmedMessage = input.message.trim();
+
+      // Call AI without any history (single-turn)
+      const { answer, sources } = await answerTaxQuestion(trimmedMessage, []);
+
+      return {
+        answer,
+        sources,
+      };
+    }),
+
+  // ─── Chat History ──────────────────────────────────────
   history: protectedProcedure.query(async ({ ctx }) => {
     const chats = await ctx.db.chat.findMany({
       where: { userId: ctx.session.user.id },
@@ -18,6 +146,7 @@ export const chatRouter = createTRPCRouter({
     return chats;
   }),
 
+  // ─── Chat Messages ────────────────────────────────────
   messages: protectedProcedure.input(chatIdInput).query(async ({ ctx, input }) => {
     const chat = await ctx.db.chat.findFirst({
       where: {
@@ -48,6 +177,7 @@ export const chatRouter = createTRPCRouter({
     }));
   }),
 
+  // ─── Create Chat ──────────────────────────────────────
   create: protectedProcedure.mutation(async ({ ctx }) => {
     const chat = await ctx.db.chat.create({
       data: {
@@ -58,6 +188,7 @@ export const chatRouter = createTRPCRouter({
     return chat;
   }),
 
+  // ─── Send Message (with credit check + spam detection) ─
   sendMessage: protectedProcedure
     .input(
       z.object({
@@ -76,7 +207,37 @@ export const chatRouter = createTRPCRouter({
 
       const trimmedMessage = input.message.trim();
 
-      // NEW: Fetch recent message history for conversational context (last 10 messages)
+      // ── Credit check ──────────────────────────────────
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { credits: true },
+      });
+
+      if (!user || user.credits <= 0) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Kredit pesan Anda telah habis. Silakan hubungi administrator.',
+        });
+      }
+
+      // ── Spam detection + cost calculation ──────────────
+      const quotaConfig = await getQuotaConfig(ctx.db);
+      const { cost } = await computeCreditCost(
+        ctx.db,
+        ctx.session.user.id,
+        trimmedMessage,
+        input.chatId,
+        quotaConfig,
+      );
+
+      // Deduct credits
+      const newCredits = Math.max(0, user.credits - cost);
+      await ctx.db.user.update({
+        where: { id: ctx.session.user.id },
+        data: { credits: newCredits },
+      });
+
+      // ── Existing logic: fetch history, send to AI, save ──
       const recentMessages = await ctx.db.message.findMany({
         where: { chatId: chat.id },
         orderBy: { createdAt: 'asc' },
@@ -102,7 +263,6 @@ export const chatRouter = createTRPCRouter({
         });
       }
 
-      // NEW: Pass message history to AI for conversational context
       const messageHistory = recentMessages.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.content,
@@ -114,7 +274,6 @@ export const chatRouter = createTRPCRouter({
       const augmentedSources = await Promise.all(
         sources.map(async (src) => {
           let searchStr = src.source;
-          // Try to extract just "X TAHUN YYYY" for better matching
           const numMatch = src.source.match(/Nomor\s+(\d+\s+TAHUN\s+\d+)/i) || src.source.match(/No\.?\s+(\d+\s+TAHUN\s+\d+)/i);
           if (numMatch && numMatch[1]) {
             searchStr = numMatch[1];
@@ -160,9 +319,12 @@ export const chatRouter = createTRPCRouter({
           createdAt: assistantMessage.createdAt,
           sources,
         },
+        creditsRemaining: newCredits,
+        creditCost: cost,
       };
     }),
 
+  // ─── Feedback ─────────────────────────────────────────
   submitFeedback: protectedProcedure
     .input(
       z.object({
@@ -219,7 +381,6 @@ export const chatRouter = createTRPCRouter({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Pesan tidak ditemukan' });
       }
 
-      // Delete the feedback if it exists
       await ctx.db.feedback.deleteMany({
         where: {
           messageId: message.id,
@@ -230,6 +391,7 @@ export const chatRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  // ─── Chat Management ─────────────────────────────────
   deleteChat: protectedProcedure
     .input(chatIdInput)
     .mutation(async ({ ctx, input }) => {
@@ -244,12 +406,10 @@ export const chatRouter = createTRPCRouter({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Chat tidak ditemukan' });
       }
 
-      // Delete all messages and feedback for this chat
       await ctx.db.message.deleteMany({
         where: { chatId: chat.id },
       });
 
-      // Delete the chat
       await ctx.db.chat.delete({
         where: { id: chat.id },
       });
@@ -284,6 +444,7 @@ export const chatRouter = createTRPCRouter({
       return updatedChat;
     }),
 
+  // ─── Reports ──────────────────────────────────────────
   submitReport: protectedProcedure
     .input(
       z.object({
@@ -320,4 +481,3 @@ export const chatRouter = createTRPCRouter({
       return report;
     }),
 });
-

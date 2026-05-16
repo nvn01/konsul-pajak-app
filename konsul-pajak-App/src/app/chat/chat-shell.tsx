@@ -7,6 +7,9 @@ import { signOut, useSession } from "next-auth/react";
 import { LogOut, Menu, X, Send, Loader2 } from "lucide-react";
 
 import { ChatMessage } from "@/components/chat-message";
+import { PublicHeader } from "@/components/public-header";
+import { SignupPrompt } from "@/components/signup-prompt";
+import { CreditsExhaustedModal } from "@/components/credits-exhausted-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -61,14 +64,20 @@ function ThinkingIndicator() {
 
 interface ChatShellProps {
   initialChatId: string | null;
+  isGuest?: boolean;
 }
 
-export function ChatShell({ initialChatId }: ChatShellProps) {
+export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session } = useSession();
   const [message, setMessage] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Guest mode state
+  const [guestMessageSent, setGuestMessageSent] = useState(false);
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
+  const [showCreditsExhausted, setShowCreditsExhausted] = useState(false);
 
   // Track the current chat ID independently from the prop
   const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId);
@@ -97,8 +106,15 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     setCurrentChatId(initialChatId);
   }, [initialChatId]);
 
+  // Only fetch history/messages when logged in
   const historyQuery = api.chat.history.useQuery(undefined, {
     refetchOnWindowFocus: false,
+    enabled: !isGuest,
+  });
+
+  // Credit info for logged-in users
+  const creditsQuery = api.chat.getCredits.useQuery(undefined, {
+    enabled: !isGuest,
   });
 
   const hasActiveChat = Boolean(currentChatId);
@@ -106,19 +122,19 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const messagesQuery = api.chat.messages.useQuery(
     { chatId: currentChatId ?? "" },
     {
-      enabled: hasActiveChat,
+      enabled: hasActiveChat && !isGuest,
       refetchOnReconnect: true,
     },
   );
 
   const createChatMutation = api.chat.create.useMutation();
-
   const sendMessageMutation = api.chat.sendMessage.useMutation();
+  const guestMessageMutation = api.chat.guestMessage.useMutation();
 
   const isComposerBusy =
-    createChatMutation.isPending || sendMessageMutation.isPending;
+    createChatMutation.isPending || sendMessageMutation.isPending || guestMessageMutation.isPending;
 
-  const isAIThinking = sendMessageMutation.isPending;
+  const isAIThinking = sendMessageMutation.isPending || guestMessageMutation.isPending;
 
   // Auto-scroll to bottom when messages change
   const scrollToBottom = useCallback(() => {
@@ -150,6 +166,18 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
   const handleSend = useCallback(async () => {
     if (!message.trim()) return;
 
+    // Guest: block if already sent 1 message
+    if (isGuest && guestMessageSent) {
+      setShowSignupPrompt(true);
+      return;
+    }
+
+    // Logged in: check credits
+    if (!isGuest && creditsQuery.data && creditsQuery.data.credits <= 0) {
+      setShowCreditsExhausted(true);
+      return;
+    }
+
     const text = message.trim();
     const tempId = `temp-${Date.now()}`;
 
@@ -168,17 +196,35 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
     setTimeout(() => scrollToBottom(), 100);
 
     try {
+      // ── GUEST MODE ──────────────────────────────────
+      if (isGuest) {
+        const result = await guestMessageMutation.mutateAsync({ message: text });
+
+        // Add AI response as optimistic message
+        setOptimisticMessages(prev => [...prev, {
+          id: `guest-ai-${Date.now()}`,
+          role: "assistant",
+          content: result.answer,
+          createdAt: new Date(),
+          sources: result.sources as any,
+          feedback: null
+        }]);
+
+        setGuestMessageSent(true);
+        // Show signup prompt after a short delay
+        setTimeout(() => setShowSignupPrompt(true), 1500);
+        return;
+      }
+
+      // ── AUTHENTICATED MODE ──────────────────────────
       let targetChatId = currentChatId;
 
       if (!targetChatId) {
-        // Mark that we're creating a new chat
         isCreatingNewChat.current = true;
 
         const newChat = await createChatMutation.mutateAsync();
         targetChatId = newChat.id;
-        // Update local state to track the new chat ID
         setCurrentChatId(targetChatId);
-        // Use native History API to update URL without page reload
         window.history.replaceState(null, '', `/chat/${newChat.id}`);
       }
 
@@ -191,7 +237,6 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
         message: text,
       });
 
-      // Track the new assistant message for typewriter animation
       if (result.assistantMessage?.id) {
         setNewAssistantMessageId(result.assistantMessage.id);
       }
@@ -199,19 +244,20 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
       await Promise.all([
         utils.chat.messages.invalidate({ chatId: targetChatId }),
         utils.chat.history.invalidate(),
+        utils.chat.getCredits.invalidate(),
       ]);
 
-      // Don't clear optimistic messages here - let them be replaced by real messages
-      // This keeps the user's message visible while AI is thinking
-    } catch (error) {
+    } catch (error: any) {
       console.error("[Chat] Failed to send message", error);
+      // Show credits exhausted if that's the error
+      if (error?.message?.includes?.("Kredit") || error?.data?.code === "FORBIDDEN") {
+        setShowCreditsExhausted(true);
+      }
       setMessage(text);
-      // Remove optimistic message on error
       setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));
-      // Reset flag on error
       isCreatingNewChat.current = false;
     }
-  }, [message, currentChatId, createChatMutation, sendMessageMutation, utils, scrollToBottom]);
+  }, [message, currentChatId, isGuest, guestMessageSent, creditsQuery.data, createChatMutation, sendMessageMutation, guestMessageMutation, utils, scrollToBottom]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -375,11 +421,13 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
 
   return (
     <div className="flex h-screen flex-col">
-      {/* Header */}
+      {/* Header — Guest vs Authenticated */}
+      {isGuest ? (
+        <PublicHeader />
+      ) : (
       <header className="bg-primary text-primary-foreground border-primary-foreground/10 border-b px-4 md:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Hamburger menu button - visible on mobile and tablet */}
             <Button
               variant="ghost"
               size="icon"
@@ -413,7 +461,16 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
             </Link>
           </div>
 
-
+          <div className="flex items-center gap-3">
+            {/* Credit indicator */}
+            {creditsQuery.data && (
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-primary-foreground/70 bg-primary-foreground/10 rounded-full px-3 py-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+                </svg>
+                {creditsQuery.data.credits} kredit
+              </div>
+            )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -441,6 +498,11 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                   <p className="text-muted-foreground text-xs leading-none">
                     {session?.user?.email}
                   </p>
+                  {creditsQuery.data && (
+                    <p className="text-muted-foreground text-xs leading-none mt-1">
+                      {creditsQuery.data.credits} kredit tersisa
+                    </p>
+                  )}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -459,8 +521,10 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
-      </header >
+      </header>
+      )}
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile overlay */}
@@ -472,46 +536,86 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
         )}
 
         {/* Sidebar */}
-        <aside className={`
-          bg-sidebar text-sidebar-foreground border-sidebar-border
-          flex flex-col border-r
-          fixed md:static
-          top-[65px] md:top-0 bottom-0 left-0
-          z-50
-          w-64 md:w-64
-          transform transition-transform duration-300 ease-in-out
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        `}>
-          <div className="border-sidebar-border border-b p-3">
-            <button
-              type="button"
-              onClick={() => {
-                handleCreateChat();
-                handleCloseSidebar();
-              }}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-sidebar-primary px-4 py-2.5 text-sm font-medium text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring cursor-pointer"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+        {isGuest ? (
+          /* Guest sidebar — info panel */
+          <aside className={`
+            bg-sidebar text-sidebar-foreground border-sidebar-border
+            flex flex-col border-r
+            fixed md:static
+            top-[65px] md:top-0 bottom-0 left-0
+            z-50
+            w-64 md:w-64
+            transform transition-transform duration-300 ease-in-out
+            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          `}>
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sidebar-primary/20 text-sidebar-primary mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                  <polyline points="10 17 15 12 10 7" />
+                  <line x1="15" x2="3" y1="12" y2="12" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-bold text-sidebar-foreground mb-2">Masuk untuk fitur lengkap</h3>
+              <ul className="text-xs text-sidebar-foreground/70 space-y-2 mb-6 text-left">
+                <li className="flex items-start gap-2">
+                  <span>📋</span>
+                  <span>Simpan riwayat percakapan</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span>🔍</span>
+                  <span>Akses riwayat chat kapan saja</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span>💬</span>
+                  <span>Dapatkan 100 kredit pesan gratis</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span>⭐</span>
+                  <span>Beri feedback pada jawaban AI</span>
+                </li>
+              </ul>
+              <Link
+                href="/login"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-sidebar-primary px-4 py-2.5 text-sm font-medium text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90"
               >
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              Percakapan Baru
-            </button>
-          </div>
+                Masuk Sekarang
+              </Link>
+            </div>
+          </aside>
+        ) : (
+          /* Authenticated sidebar — chat history */
+          <aside className={`
+            bg-sidebar text-sidebar-foreground border-sidebar-border
+            flex flex-col border-r
+            fixed md:static
+            top-[65px] md:top-0 bottom-0 left-0
+            z-50
+            w-64 md:w-64
+            transform transition-transform duration-300 ease-in-out
+            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          `}>
+            <div className="border-sidebar-border border-b p-3">
+              <button
+                type="button"
+                onClick={() => {
+                  handleCreateChat();
+                  handleCloseSidebar();
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-sidebar-primary px-4 py-2.5 text-sm font-medium text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Percakapan Baru
+              </button>
+            </div>
 
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="space-y-1 p-3">{sidebarContent}</div>
-          </ScrollArea>
-        </aside>
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="space-y-1 p-3">{sidebarContent}</div>
+            </ScrollArea>
+          </aside>
+        )}
 
         {/* Main Chat Area */}
         <main className="flex flex-1 flex-col overflow-hidden w-full">
@@ -552,6 +656,11 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
               {/* AI Thinking Indicator */}
               {isAIThinking && <ThinkingIndicator />}
 
+              {/* Guest signup banner (inline, after first message response) */}
+              {isGuest && guestMessageSent && !isAIThinking && (
+                <SignupPrompt variant="banner" />
+              )}
+
               {hasActiveChat && messagesQuery.isError && (
                 <div className="text-destructive py-8 text-center">
                   Gagal memuat pesan. Silakan muat ulang halaman.
@@ -579,13 +688,13 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
                         void handleSend();
                       }
                     }}
-                    disabled={isComposerBusy}
+                    disabled={isComposerBusy || (isGuest && guestMessageSent)}
                   />
                 </div>
                 <div className="flex items-center justify-end mt-2">
                   <button
                     type="submit"
-                    disabled={isComposerBusy || !message.trim()}
+                    disabled={isComposerBusy || !message.trim() || (isGuest && guestMessageSent)}
                     className="inline-flex shrink-0 items-center gap-2 rounded-full bg-accent px-3 py-2 text-sm font-medium text-accent-foreground shadow-sm transition-all hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {isComposerBusy ? (
@@ -677,6 +786,16 @@ export function ChatShell({ initialChatId }: ChatShellProps) {
           </div>
         )
       }
-    </div >
+
+      {/* Guest signup prompt modal */}
+      {showSignupPrompt && isGuest && (
+        <SignupPrompt variant="modal" />
+      )}
+
+      {/* Credits exhausted modal */}
+      {showCreditsExhausted && (
+        <CreditsExhaustedModal onClose={() => setShowCreditsExhausted(false)} />
+      )}
+    </div>
   );
 }
