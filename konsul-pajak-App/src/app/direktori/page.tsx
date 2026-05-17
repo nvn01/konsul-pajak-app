@@ -4,7 +4,7 @@ import { useState } from "react"
 import { api } from "nvn/trpc/react"
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
-import { LogOut } from "lucide-react"
+import { LogOut, Info, Phone, MessageCircle, BookOpen, Calculator } from "lucide-react"
 
 import { PublicHeader } from "@/components/public-header"
 import { Button } from "@/components/ui/button"
@@ -127,6 +127,38 @@ export default function DirektoriPage() {
                   </p>
                 </div>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer" asChild>
+                <Link href="/about">
+                  <Info className="mr-2 h-4 w-4" />
+                  <span>Tentang Aplikasi</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" asChild>
+                <Link href="/contact">
+                  <Phone className="mr-2 h-4 w-4" />
+                  <span>Kontak</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground font-medium px-2 py-1.5">Fitur</DropdownMenuLabel>
+              <DropdownMenuItem className="cursor-pointer" asChild>
+                <Link href="/chat">
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  <span>Konsultasi AI</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" asChild>
+                <Link href="/direktori">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  <span>Direktori Peraturan</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled className="opacity-50">
+                <Calculator className="mr-2 h-4 w-4" />
+                <span>Kalkulator Pajak</span>
+                <span className="ml-auto text-[10px] rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Segera</span>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />

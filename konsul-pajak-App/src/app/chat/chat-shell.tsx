@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, Menu, X, Send, Loader2, ClipboardList, History, MessageCircle } from "lucide-react";
+import { LogOut, Menu, X, Send, Loader2, ClipboardList, History, MessageCircle, Info, Phone, Layers, Calculator, BookOpen } from "lucide-react";
 
 import { ChatMessage } from "@/components/chat-message";
 import { PublicHeader } from "@/components/public-header";
@@ -495,17 +495,39 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
                   <p className="text-muted-foreground text-xs leading-none">
                     {session?.user?.email}
                   </p>
-
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="cursor-pointer" asChild>
+                <Link href="/about">
+                  <Info className="mr-2 h-4 w-4" />
+                  <span>Tentang Aplikasi</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" asChild>
+                <Link href="/contact">
+                  <Phone className="mr-2 h-4 w-4" />
+                  <span>Kontak</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground font-medium px-2 py-1.5">Fitur</DropdownMenuLabel>
+              <DropdownMenuItem className="cursor-pointer" asChild>
+                <Link href="/chat">
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  <span>Konsultasi AI</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" asChild>
                 <Link href="/direktori">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-4 w-4">
-                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
-                  </svg>
+                  <BookOpen className="mr-2 h-4 w-4" />
                   <span>Direktori Peraturan</span>
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled className="opacity-50">
+                <Calculator className="mr-2 h-4 w-4" />
+                <span>Kalkulator Pajak</span>
+                <span className="ml-auto text-[10px] rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Segera</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
