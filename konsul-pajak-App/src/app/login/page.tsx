@@ -99,7 +99,7 @@ export default function LoginPage() {
     setIsLoading(true);
     const popup = popupCenter(
       `/google-signin?redirectTo=${encodeURIComponent("/chat")}`,
-      "Login Konsul Pajak",
+      "Login Tanya Pajak AI",
     );
 
     if (popup) {
@@ -238,10 +238,10 @@ export default function LoginPage() {
           {/* Header */}
           <div className="space-y-2 text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-lg overflow-hidden">
-              <img src="/logo-login.png" alt="Konsul Pajak" className="h-16 w-16 object-contain" />
+              <img src="/logo-login.png" alt="Tanya Pajak AI" className="h-16 w-16 object-contain" />
             </div>
             <h1 className="text-primary text-2xl font-bold">
-              {flowState === "email" ? "Login Konsul Pajak" : "Verifikasi Email"}
+              {flowState === "email" ? "Login Tanya Pajak AI" : "Verifikasi Email"}
             </h1>
             <p className="text-muted-foreground text-sm">
               {flowState === "email"

@@ -7,6 +7,7 @@ import { useSession, signOut } from "next-auth/react"
 import { LogOut, Info, Phone, MessageCircle, BookOpen, Calculator } from "lucide-react"
 
 import { PublicHeader } from "@/components/public-header"
+import { BrandText } from "@/components/brand-text"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -79,7 +80,7 @@ export default function DirektoriPage() {
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2">
               <img src="/logo-header.png" alt="KP" className="h-8 w-8 object-contain" />
-              <h1 className="text-lg font-bold hidden sm:block">Konsul Pajak</h1>
+              <BrandText className="text-lg hidden sm:block" />
             </Link>
           </div>
 
@@ -89,7 +90,7 @@ export default function DirektoriPage() {
               href="/chat"
               className="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
             >
-              Konsul Pajak
+              Tanya Pajak AI
             </Link>
             <div className="px-5 py-2 rounded-full text-sm font-medium text-sidebar-primary-foreground bg-sidebar-primary">
               Direktori

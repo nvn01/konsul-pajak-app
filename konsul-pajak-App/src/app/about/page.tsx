@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { PublicHeader } from "@/components/public-header";
+import { BrandText } from "@/components/brand-text";
 import { useSession } from "next-auth/react";
 
 export default function AboutPage() {
@@ -11,20 +12,20 @@ export default function AboutPage() {
 
   const faqs = [
     {
-      q: "Apa itu Konsul Pajak?",
-      a: "Konsul Pajak adalah aplikasi chatbot AI yang dirancang untuk membantu Anda memahami peraturan perpajakan di Indonesia. Aplikasi ini menggunakan teknologi AI terbaru dari Google Vertex AI yang di-grounding dengan database peraturan pajak resmi.",
+      q: "Apa itu Tanya Pajak AI?",
+      a: "Tanya Pajak AI adalah aplikasi chatbot AI yang dirancang untuk membantu Anda memahami peraturan perpajakan di Indonesia. Aplikasi ini menggunakan teknologi AI terbaru dari Google Vertex AI yang di-grounding dengan database peraturan pajak resmi.",
     },
     {
-      q: "Apakah jawaban dari Konsul Pajak bisa dijadikan dasar hukum?",
-      a: "Tidak. Konsul Pajak hanyalah alat bantu untuk memahami peraturan perpajakan. Jawaban yang diberikan bersifat informatif dan edukatif, bukan nasihat hukum resmi. Selalu konsultasikan dengan konsultan pajak profesional untuk keputusan yang berkaitan dengan hukum.",
+      q: "Apakah jawaban dari Tanya Pajak AI bisa dijadikan dasar hukum?",
+      a: "Tidak. Tanya Pajak AI hanyalah alat bantu untuk memahami peraturan perpajakan. Jawaban yang diberikan bersifat informatif dan edukatif, bukan nasihat hukum resmi. Selalu konsultasikan dengan konsultan pajak profesional untuk keputusan yang berkaitan dengan hukum.",
     },
     {
-      q: "Bagaimana cara menggunakan Konsul Pajak?",
+      q: "Bagaimana cara menggunakan Tanya Pajak AI?",
       a: "Anda cukup mengetikkan pertanyaan seputar perpajakan di kolom chat, dan AI kami akan memberikan jawaban yang dilengkapi dengan referensi pasal dan ayat dari peraturan yang relevan. Anda bisa mencoba 1 pertanyaan gratis tanpa login, atau daftar untuk mendapatkan 100 kredit pesan.",
     },
     {
-      q: "Berapa biaya menggunakan Konsul Pajak?",
-      a: "Saat ini Konsul Pajak dapat digunakan secara gratis. Setiap pengguna yang mendaftar mendapatkan 100 kredit pesan. Setiap pertanyaan yang normal mengkonsumsi 1 kredit.",
+      q: "Berapa biaya menggunakan Tanya Pajak AI?",
+      a: "Saat ini Tanya Pajak AI dapat digunakan secara gratis. Setiap pengguna yang mendaftar mendapatkan kredit pesan. Setiap pertanyaan yang normal mengkonsumsi 1 kredit.",
     },
     {
       q: "Peraturan pajak apa saja yang tersedia?",
@@ -46,7 +47,7 @@ export default function AboutPage() {
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
               <img src="/logo-header.png" alt="KP" className="h-8 w-8 object-contain" />
-              <h1 className="text-lg font-bold">Konsul Pajak</h1>
+              <BrandText className="text-lg" />
             </Link>
             <Link href="/chat" className="text-sm text-primary-foreground/80 hover:text-primary-foreground transition-colors">
               ← Kembali ke Chat
@@ -59,7 +60,7 @@ export default function AboutPage() {
         {/* Hero */}
         <section className="bg-primary text-primary-foreground py-16 md:py-24">
           <div className="mx-auto max-w-4xl px-4 text-center">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">Tentang Konsul Pajak</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-4">Tentang Tanya Pajak AI</h1>
             <p className="text-lg text-primary-foreground/80 max-w-2xl mx-auto">
               Asisten AI untuk konsultasi perpajakan Indonesia, didukung oleh teknologi
               Google Vertex AI dengan grounding pada peraturan perpajakan resmi.
@@ -73,14 +74,14 @@ export default function AboutPage() {
             <h2 className="text-2xl font-bold text-foreground mb-4">Latar Belakang</h2>
             <div className="prose-chat text-muted-foreground space-y-4">
               <p>
-                Konsul Pajak dikembangkan sebagai bagian dari proyek skripsi untuk mengatasi
+                Tanya Pajak AI dikembangkan sebagai bagian dari proyek skripsi untuk mengatasi
                 tantangan aksesibilitas informasi perpajakan di Indonesia. Banyak masyarakat
                 dan pelaku usaha yang kesulitan memahami peraturan perpajakan yang kompleks
                 dan sering berubah.
               </p>
               <p>
                 Dengan memanfaatkan teknologi Retrieval-Augmented Generation (RAG) dari
-                Google Vertex AI, Konsul Pajak dapat memberikan jawaban yang akurat dan
+                Google Vertex AI, Tanya Pajak AI dapat memberikan jawaban yang akurat dan
                 dilengkapi dengan referensi langsung ke pasal dan ayat peraturan yang relevan.
               </p>
             </div>
@@ -159,7 +160,7 @@ export default function AboutPage() {
       {/* Footer */}
       <footer className="bg-muted border-t border-border py-6">
         <div className="mx-auto max-w-4xl px-4 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Konsul Pajak. Dikembangkan sebagai proyek skripsi.
+          © {new Date().getFullYear()} Tanya Pajak AI. Dikembangkan sebagai proyek skripsi.
         </div>
       </footer>
     </div>

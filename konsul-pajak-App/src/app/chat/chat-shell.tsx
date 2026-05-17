@@ -10,6 +10,7 @@ import { ChatMessage } from "@/components/chat-message";
 import { PublicHeader } from "@/components/public-header";
 import { SignupPrompt } from "@/components/signup-prompt";
 import { CreditsExhaustedModal } from "@/components/credits-exhausted-modal";
+import { BrandText } from "@/components/brand-text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -448,14 +449,14 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
             </Button>
             <Link href="/" className="flex items-center gap-2">
               <img src="/logo-header.png" alt="KP" className="h-8 w-8 object-contain" />
-              <h1 className="text-lg font-bold hidden sm:block">Konsul Pajak</h1>
+              <BrandText className="text-lg hidden sm:block" />
             </Link>
           </div>
 
           {/* Toggle Tabs */}
           <div className="flex items-center bg-white rounded-full p-1 shadow-sm">
             <div className="px-5 py-2 rounded-full text-sm font-medium text-sidebar-primary-foreground bg-sidebar-primary">
-              Konsul Pajak
+              Tanya Pajak AI
             </div>
             <Link
               href="/direktori"

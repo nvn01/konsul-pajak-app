@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { BrandText } from "@/components/brand-text";
 
 /**
  * PublicHeader — shared navigation for non-logged-in users.
@@ -41,7 +42,7 @@ export function PublicHeader() {
 
           <Link href="/" className="flex items-center gap-2">
             <img src="/logo-header.png" alt="KP" className="h-8 w-8 object-contain" />
-            <h1 className="text-lg font-bold hidden sm:block">Konsul Pajak</h1>
+            <BrandText className="text-lg hidden sm:block" />
           </Link>
         </div>
 
