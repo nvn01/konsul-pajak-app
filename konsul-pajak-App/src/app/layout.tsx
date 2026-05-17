@@ -13,7 +13,6 @@ const geist = Geist({
 export const metadata: Metadata = {
   title: "Konsul Pajak - Asisten AI Perpajakan",
   description: "Chatbot AI untuk konsultasi perpajakan Indonesia",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
 export default function RootLayout({
