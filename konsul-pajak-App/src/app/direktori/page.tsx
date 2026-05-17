@@ -78,9 +78,7 @@ export default function DirektoriPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2">
-              <div className="bg-primary-foreground/20 flex h-8 w-8 items-center justify-center rounded-md font-bold text-sm">
-                KP
-              </div>
+              <img src="/logo-header.png" alt="KP" className="h-8 w-8 object-contain" />
               <h1 className="text-lg font-bold hidden sm:block">Konsul Pajak</h1>
             </Link>
           </div>
