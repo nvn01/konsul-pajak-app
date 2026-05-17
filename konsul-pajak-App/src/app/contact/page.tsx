@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { PublicHeader } from "@/components/public-header";
+import { BrandText } from "@/components/brand-text";
 import { useSession } from "next-auth/react";
 
 export default function ContactPage() {
@@ -17,7 +18,7 @@ export default function ContactPage() {
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
               <img src="/logo-header.png" alt="KP" className="h-8 w-8 object-contain" />
-              <h1 className="text-lg font-bold">Konsul Pajak</h1>
+              <BrandText className="text-lg" />
             </Link>
             <Link href="/chat" className="text-sm text-primary-foreground/80 hover:text-primary-foreground transition-colors">
               ← Kembali ke Chat
@@ -98,7 +99,7 @@ export default function ContactPage() {
                   <span className="text-lg">📖</span>
                   <div>
                     <div className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">Tentang Aplikasi</div>
-                    <div className="text-xs text-muted-foreground">Pelajari lebih lanjut tentang Konsul Pajak</div>
+                    <div className="text-xs text-muted-foreground">Pelajari lebih lanjut tentang Tanya Pajak AI</div>
                   </div>
                 </Link>
                 <Link href="/chat" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:shadow-md transition-all group">
@@ -124,7 +125,7 @@ export default function ContactPage() {
       {/* Footer */}
       <footer className="bg-muted border-t border-border py-6">
         <div className="mx-auto max-w-4xl px-4 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Konsul Pajak. Dikembangkan sebagai proyek skripsi.
+          © {new Date().getFullYear()} Tanya Pajak AI. Dikembangkan sebagai proyek skripsi.
         </div>
       </footer>
     </div>

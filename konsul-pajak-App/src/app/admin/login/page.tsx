@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
               KP
             </div>
             <h1 className="text-2xl font-bold text-primary">Admin Login</h1>
-            <p className="text-sm text-muted-foreground">Akses panel administrasi Konsul Pajak</p>
+            <p className="text-sm text-muted-foreground">Akses panel administrasi Tanya Pajak AI</p>
           </div>
 
           {/* Login Form */}
