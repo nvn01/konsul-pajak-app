@@ -645,7 +645,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground mb-6">
-                      Kolaborasi dengan Prodi Akuntansi Perpajakan UNPAM
+                      Bekerja sama dengan Prodi Akuntansi Perpajakan UNPAM
                     </p>
                     <h2 className="text-3xl md:text-4xl font-semibold">
                       Ada yang bisa dibantu terkait perpajakan hari ini?
