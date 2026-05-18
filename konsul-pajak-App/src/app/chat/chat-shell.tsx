@@ -641,7 +641,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
                       <img
                         src="/logo-unpam.png"
                         alt="Universitas Pamulang"
-                        className="h-16 w-16 md:h-20 md:w-20 object-contain"
+                        className="h-[67px] w-[67px] md:h-[83px] md:w-[83px] object-contain"
                       />
                     </div>
                     <p className="text-xs text-muted-foreground mb-6">
