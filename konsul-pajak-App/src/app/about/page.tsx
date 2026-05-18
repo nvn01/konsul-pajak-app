@@ -5,6 +5,7 @@ import { useState } from "react";
 import { PublicHeader } from "@/components/public-header";
 import { BrandText } from "@/components/brand-text";
 import { useSession } from "next-auth/react";
+import { MessageCircle, Scale, BookOpen, Lock } from "lucide-react";
 
 export default function AboutPage() {
   const { data: session } = useSession();
@@ -92,13 +93,15 @@ export default function AboutPage() {
             <h2 className="text-2xl font-bold text-foreground mb-6">Fitur Utama</h2>
             <div className="grid md:grid-cols-2 gap-4">
               {[
-                { icon: "💬", title: "Konsultasi AI", desc: "Tanyakan pertanyaan seputar perpajakan dan dapatkan jawaban yang komprehensif." },
-                { icon: "📚", title: "Referensi Hukum", desc: "Setiap jawaban dilengkapi dengan referensi pasal dan ayat dari peraturan resmi." },
-                { icon: "📖", title: "Direktori Peraturan", desc: "Jelajahi 40+ peraturan perpajakan Indonesia dalam satu tempat." },
-                { icon: "🔒", title: "Privasi Terjamin", desc: "Data percakapan Anda aman dan hanya dapat diakses oleh Anda." },
+                { icon: <MessageCircle className="h-6 w-6" />, title: "Konsultasi AI", desc: "Tanyakan pertanyaan seputar perpajakan dan dapatkan jawaban yang komprehensif." },
+                { icon: <Scale className="h-6 w-6" />, title: "Referensi Hukum", desc: "Setiap jawaban dilengkapi dengan referensi pasal dan ayat dari peraturan resmi." },
+                { icon: <BookOpen className="h-6 w-6" />, title: "Direktori Peraturan", desc: "Jelajahi 40+ peraturan perpajakan Indonesia dalam satu tempat." },
+                { icon: <Lock className="h-6 w-6" />, title: "Privasi Terjamin", desc: "Data percakapan Anda aman dan hanya dapat diakses oleh Anda." },
               ].map((f, i) => (
-                <div key={i} className="rounded-xl border border-border bg-card p-5 hover:shadow-md transition-shadow">
-                  <div className="text-2xl mb-3">{f.icon}</div>
+                <div key={i} className="rounded-xl border border-border bg-card p-5 hover:shadow-md transition-shadow group">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/5 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors mb-4">
+                    {f.icon}
+                  </div>
                   <h3 className="font-bold text-foreground mb-1">{f.title}</h3>
                   <p className="text-sm text-muted-foreground">{f.desc}</p>
                 </div>
