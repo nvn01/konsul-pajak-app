@@ -23,7 +23,7 @@ export default function DirektoriPage() {
   const { data: session } = useSession()
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
-  const [filterJenis, setFilterJenis] = useState("")
+  const [filterJenis, setFilterJenis] = useState("Undang-Undang")
   const [filterTopik, setFilterTopik] = useState("")
   const [filterStatus, setFilterStatus] = useState("")
   const [filterTahun, setFilterTahun] = useState("")
@@ -63,14 +63,14 @@ export default function DirektoriPage() {
   const clearFilters = () => {
     setSearch("")
     setSearchInput("")
-    setFilterJenis("")
+    setFilterJenis("Undang-Undang")
     setFilterTopik("")
     setFilterStatus("")
     setFilterTahun("")
     setPage(1)
   }
 
-  const hasActiveFilters = search || filterJenis || filterTopik || filterStatus || filterTahun
+  const hasActiveFilters = search || filterJenis !== "Undang-Undang" || filterTopik || filterStatus || filterTahun
 
   // Helper for pagination numbers
   const getPageNumbers = () => {
@@ -233,7 +233,7 @@ export default function DirektoriPage() {
             <select
               value={filterJenis}
               onChange={(e) => { setFilterJenis(e.target.value); setPage(1); }}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring max-w-[200px]"
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full sm:w-[140px] truncate"
             >
               <option value="">Semua Jenis</option>
               {filterOptions?.jenis.map((j) => (
@@ -244,7 +244,7 @@ export default function DirektoriPage() {
             <select
               value={filterTopik}
               onChange={(e) => { setFilterTopik(e.target.value); setPage(1); }}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full sm:w-[140px] truncate"
             >
               <option value="">Semua Topik</option>
               {filterOptions?.topik.map((t) => (
@@ -255,7 +255,7 @@ export default function DirektoriPage() {
             <select
               value={filterStatus}
               onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full sm:w-[140px] truncate"
             >
               <option value="">Semua Status</option>
               {filterOptions?.status.map((s) => (
@@ -266,7 +266,7 @@ export default function DirektoriPage() {
             <select
               value={filterTahun}
               onChange={(e) => { setFilterTahun(e.target.value); setPage(1); }}
-              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full sm:w-[140px] truncate"
             >
               <option value="">Semua Tahun</option>
               {filterOptions?.tahun.map((y) => (
