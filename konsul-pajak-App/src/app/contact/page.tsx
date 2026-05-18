@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PublicHeader } from "@/components/public-header";
 import { BrandText } from "@/components/brand-text";
 import { useSession } from "next-auth/react";
+import { Info, MessageCircle, BookOpen } from "lucide-react";
 
 export default function ContactPage() {
   const { data: session } = useSession();
@@ -96,21 +97,27 @@ export default function ContactPage() {
               <h2 className="text-2xl font-bold text-foreground">Tautan Cepat</h2>
               <div className="space-y-3">
                 <Link href="/about" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:shadow-md transition-all group">
-                  <span className="text-lg">📖</span>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/5 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+                    <Info className="h-5 w-5" />
+                  </div>
                   <div>
                     <div className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">Tentang Aplikasi</div>
                     <div className="text-xs text-muted-foreground">Pelajari lebih lanjut tentang Tanya Pajak AI</div>
                   </div>
                 </Link>
                 <Link href="/chat" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:shadow-md transition-all group">
-                  <span className="text-lg">💬</span>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/5 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+                    <MessageCircle className="h-5 w-5" />
+                  </div>
                   <div>
                     <div className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">Mulai Konsultasi</div>
                     <div className="text-xs text-muted-foreground">Tanyakan pertanyaan seputar perpajakan</div>
                   </div>
                 </Link>
                 <Link href="/direktori" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:shadow-md transition-all group">
-                  <span className="text-lg">📚</span>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/5 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+                    <BookOpen className="h-5 w-5" />
+                  </div>
                   <div>
                     <div className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">Direktori Peraturan</div>
                     <div className="text-xs text-muted-foreground">Jelajahi peraturan perpajakan Indonesia</div>

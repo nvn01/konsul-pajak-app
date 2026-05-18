@@ -293,7 +293,7 @@ export default function DirektoriPage() {
             </p>
             <div className="flex items-center gap-2 text-xs bg-sidebar-primary/10 text-sidebar-primary px-3 py-1.5 rounded-full w-fit">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Simbol bintang (⭐) menandakan dokumen yang digunakan untuk melatih AI (RAG)</span>
+              <span>Ikon (<Sparkles className="w-3 h-3 inline-block" />) menandakan dokumen yang digunakan untuk melatih AI (RAG)</span>
             </div>
           </div>
 
@@ -311,8 +311,8 @@ export default function DirektoriPage() {
                 <h3 className="font-bold text-foreground mb-2 group-hover:text-sidebar-primary transition-colors flex items-start gap-2">
                   <span>{item.title}</span>
                   {item.jenis.toLowerCase() === "undang-undang" && (
-                    <span title="Dokumen ini digunakan untuk melatih AI (RAG)" className="text-yellow-500 mt-0.5 flex-shrink-0">
-                      ⭐
+                    <span title="Dokumen ini digunakan untuk melatih AI (RAG)" className="text-sidebar-primary mt-0.5 flex-shrink-0">
+                      <Sparkles className="w-4 h-4" />
                     </span>
                   )}
                 </h3>
