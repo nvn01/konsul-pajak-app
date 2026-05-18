@@ -23,7 +23,7 @@ export default function DirektoriPage() {
   const { data: session } = useSession()
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
-  const [filterJenis, setFilterJenis] = useState("Undang-Undang")
+  const [filterJenis, setFilterJenis] = useState("")
   const [filterTopik, setFilterTopik] = useState("")
   const [filterStatus, setFilterStatus] = useState("")
   const [filterTahun, setFilterTahun] = useState("")
@@ -63,14 +63,14 @@ export default function DirektoriPage() {
   const clearFilters = () => {
     setSearch("")
     setSearchInput("")
-    setFilterJenis("Undang-Undang")
+    setFilterJenis("")
     setFilterTopik("")
     setFilterStatus("")
     setFilterTahun("")
     setPage(1)
   }
 
-  const hasActiveFilters = search || filterJenis !== "Undang-Undang" || filterTopik || filterStatus || filterTahun
+  const hasActiveFilters = search || filterJenis || filterTopik || filterStatus || filterTahun
 
   // Helper for pagination numbers
   const getPageNumbers = () => {
