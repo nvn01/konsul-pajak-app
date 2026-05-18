@@ -9,6 +9,8 @@
     "db:generate": "prisma migrate dev",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
+    "db:seed:peraturan:csv": "node --env-file=.env --experimental-strip-types prisma/seed-peraturan-csv.ts",
+    "db:seed:peraturan:csv:dry": "node --env-file=.env --experimental-strip-types prisma/seed-peraturan-csv.ts --dry-run",
     "db:studio": "prisma studio",
     "dev": "next dev --turbo",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
