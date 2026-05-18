@@ -19,13 +19,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-const DEFAULT_JENIS = "Undang-undang"
-
 export default function DirektoriPage() {
   const { data: session } = useSession()
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
-  const [filterJenis, setFilterJenis] = useState(DEFAULT_JENIS)
+  const [filterJenis, setFilterJenis] = useState("")
   const [filterTopik, setFilterTopik] = useState("")
   const [filterStatus, setFilterStatus] = useState("")
   const [filterTahun, setFilterTahun] = useState("")
@@ -65,19 +63,14 @@ export default function DirektoriPage() {
   const clearFilters = () => {
     setSearch("")
     setSearchInput("")
-    setFilterJenis(DEFAULT_JENIS)
+    setFilterJenis("")
     setFilterTopik("")
     setFilterStatus("")
     setFilterTahun("")
     setPage(1)
   }
 
-  const hasActiveFilters =
-    Boolean(search) ||
-    filterJenis !== DEFAULT_JENIS ||
-    Boolean(filterTopik) ||
-    Boolean(filterStatus) ||
-    Boolean(filterTahun)
+  const hasActiveFilters = search || filterJenis || filterTopik || filterStatus || filterTahun
 
   // Helper for pagination numbers
   const getPageNumbers = () => {
