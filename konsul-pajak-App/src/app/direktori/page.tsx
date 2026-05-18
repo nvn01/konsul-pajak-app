@@ -4,7 +4,7 @@ import { useState } from "react"
 import { api } from "nvn/trpc/react"
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
-import { LogOut, Info, Phone, MessageCircle, BookOpen, Calculator } from "lucide-react"
+import { LogOut, Info, Phone, MessageCircle, BookOpen, Calculator, Sparkles } from "lucide-react"
 
 import { PublicHeader } from "@/components/public-header"
 import { BrandText } from "@/components/brand-text"
@@ -23,6 +23,7 @@ export default function DirektoriPage() {
   const { data: session } = useSession()
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
+  const [filterJenis, setFilterJenis] = useState("")
   const [filterTopik, setFilterTopik] = useState("")
   const [filterStatus, setFilterStatus] = useState("")
   const [filterTahun, setFilterTahun] = useState("")
@@ -33,6 +34,7 @@ export default function DirektoriPage() {
 
   const peraturanQuery = api.peraturan.list.useQuery({
     search: search || undefined,
+    jenis: filterJenis || undefined,
     topik: filterTopik || undefined,
     status: filterStatus || undefined,
     tahun: filterTahun || undefined,
@@ -61,13 +63,42 @@ export default function DirektoriPage() {
   const clearFilters = () => {
     setSearch("")
     setSearchInput("")
+    setFilterJenis("")
     setFilterTopik("")
     setFilterStatus("")
     setFilterTahun("")
     setPage(1)
   }
 
-  const hasActiveFilters = search || filterTopik || filterStatus || filterTahun
+  const hasActiveFilters = search || filterJenis || filterTopik || filterStatus || filterTahun
+
+  // Helper for pagination numbers
+  const getPageNumbers = () => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= page - delta && i <= page + delta)) {
+        range.push(i);
+      }
+    }
+
+    for (let i of range) {
+      if (l) {
+        if (i - l === 2) {
+          rangeWithDots.push(l + 1);
+        } else if (i - l !== 1) {
+          rangeWithDots.push("...");
+        }
+      }
+      rangeWithDots.push(i);
+      l = i;
+    }
+
+    return rangeWithDots;
+  };
 
   return (
     <div className="flex h-screen flex-col">
@@ -200,6 +231,17 @@ export default function DirektoriPage() {
           {/* Filter Row */}
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <select
+              value={filterJenis}
+              onChange={(e) => { setFilterJenis(e.target.value); setPage(1); }}
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring max-w-[200px]"
+            >
+              <option value="">Semua Jenis</option>
+              {filterOptions?.jenis.map((j) => (
+                <option key={j} value={j}>{j.length > 25 ? j.substring(0, 25) + '...' : j}</option>
+              ))}
+            </select>
+
+            <select
               value={filterTopik}
               onChange={(e) => { setFilterTopik(e.target.value); setPage(1); }}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -243,12 +285,16 @@ export default function DirektoriPage() {
           </div>
 
           {/* Results count */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
             <p className="text-sm text-muted-foreground">
               {peraturanQuery.isLoading
                 ? "Memuat data peraturan..."
                 : `Menampilkan ${peraturanList.length} dari ${totalCount} Peraturan`}
             </p>
+            <div className="flex items-center gap-2 text-xs bg-sidebar-primary/10 text-sidebar-primary px-3 py-1.5 rounded-full w-fit">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Simbol bintang (⭐) menandakan dokumen yang digunakan untuk melatih AI (RAG)</span>
+            </div>
           </div>
 
           {/* Peraturan List */}
@@ -262,8 +308,13 @@ export default function DirektoriPage() {
                 className="group block rounded-xl border border-border bg-card p-5 hover:shadow-md hover:border-sidebar-primary/40 transition-all"
               >
                 {/* Title */}
-                <h3 className="font-bold text-foreground mb-2 group-hover:text-sidebar-primary transition-colors">
-                  {item.title}
+                <h3 className="font-bold text-foreground mb-2 group-hover:text-sidebar-primary transition-colors flex items-start gap-2">
+                  <span>{item.title}</span>
+                  {item.jenis.toLowerCase() === "undang-undang" && (
+                    <span title="Dokumen ini digunakan untuk melatih AI (RAG)" className="text-yellow-500 mt-0.5 flex-shrink-0">
+                      ⭐
+                    </span>
+                  )}
                 </h3>
 
                 {/* Description */}
@@ -348,14 +399,17 @@ export default function DirektoriPage() {
                 ← Sebelumnya
               </button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              {getPageNumbers().map((p, idx) => (
                 <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                  key={`page-${p}-${idx}`}
+                  onClick={() => typeof p === "number" && setPage(p)}
+                  disabled={typeof p !== "number"}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     p === page
                       ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "border border-border hover:bg-muted"
+                      : typeof p === "number"
+                      ? "border border-border hover:bg-muted cursor-pointer"
+                      : "cursor-default text-muted-foreground"
                   }`}
                 >
                   {p}
