@@ -630,7 +630,24 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
               {!hasActiveChat && (
                 <div className="flex items-center justify-center min-h-[calc(100vh-300px)]">
                   <div className="text-center max-w-2xl mx-auto px-4">
-                    <h2 className="text-3xl md:text-4xl font-semibold mb-8">
+                    {/* Collab Logos */}
+                    <div className="flex items-center justify-center gap-5 mb-6">
+                      <img
+                        src="/logo-login.png"
+                        alt="Tanya Pajak AI"
+                        className="h-16 w-16 md:h-20 md:w-20 object-contain rounded-xl shadow-sm"
+                      />
+                      <span className="text-muted-foreground/40 text-2xl font-light select-none">×</span>
+                      <img
+                        src="/logo-unpam.png"
+                        alt="Universitas Pamulang"
+                        className="h-16 w-16 md:h-20 md:w-20 object-contain"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-6">
+                      Kolaborasi dengan Prodi Akuntansi Perpajakan UNPAM
+                    </p>
+                    <h2 className="text-3xl md:text-4xl font-semibold">
                       Ada yang bisa dibantu terkait perpajakan hari ini?
                     </h2>
                   </div>
