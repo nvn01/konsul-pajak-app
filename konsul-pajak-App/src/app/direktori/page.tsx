@@ -126,6 +126,12 @@ export default function DirektoriPage() {
             <div className="px-5 py-2 rounded-full text-sm font-medium text-sidebar-primary-foreground bg-sidebar-primary">
               Direktori
             </div>
+            <Link
+              href="/kalkulator"
+              className="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Kalkulator
+            </Link>
           </div>
 
           {/* User avatar dropdown */}
@@ -184,10 +190,11 @@ export default function DirektoriPage() {
                   <span>Direktori Peraturan</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem disabled className="opacity-50">
-                <Calculator className="mr-2 h-4 w-4" />
-                <span>Kalkulator Pajak</span>
-                <span className="ml-auto text-[10px] rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground">Segera</span>
+              <DropdownMenuItem className="cursor-pointer" asChild>
+                <Link href="/kalkulator">
+                  <Calculator className="mr-2 h-4 w-4" />
+                  <span>Kalkulator Pajak</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>

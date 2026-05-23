@@ -115,7 +115,11 @@ export function PublicHeader() {
                     <div className="text-xs text-muted-foreground">Jelajahi undang-undang pajak</div>
                   </div>
                 </Link>
-                <div className="flex items-center gap-3 px-4 py-3 text-sm opacity-50 cursor-default">
+                <Link
+                  href="/kalkulator"
+                  className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted transition-colors"
+                  onClick={() => setIsFiturOpen(false)}
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect width="16" height="20" x="4" y="2" rx="2" />
                     <line x1="8" x2="16" y1="6" y2="6" />
@@ -130,9 +134,9 @@ export function PublicHeader() {
                   </svg>
                   <div>
                     <div className="font-medium">Kalkulator Pajak</div>
-                    <div className="text-xs text-muted-foreground">Segera hadir</div>
+                    <div className="text-xs text-muted-foreground">Hitung pajak dengan AI</div>
                   </div>
-                </div>
+                </Link>
               </div>
             )}
           </div>
@@ -184,10 +188,13 @@ export function PublicHeader() {
           >
             Direktori Peraturan
           </Link>
-          <div className="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-primary-foreground/40 cursor-default">
-            <span>Kalkulator Pajak</span>
-            <span className="text-[10px] rounded-full bg-primary-foreground/10 px-1.5 py-0.5">Segera</span>
-          </div>
+          <Link
+            href="/kalkulator"
+            className="block px-3 py-2 rounded-lg text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            Kalkulator Pajak
+          </Link>
         </nav>
       )}
     </header>

@@ -3,6 +3,7 @@ import { createCallerFactory, createTRPCRouter, publicProcedure } from "nvn/serv
 import { chatRouter } from "nvn/server/api/routers/chat";
 import { peraturanRouter } from "nvn/server/api/routers/peraturan";
 import { adminRouter } from "nvn/server/api/routers/admin";
+import { kalkulatorRouter } from "nvn/server/api/routers/kalkulator";
 
 /**
  * This is the primary router for your server.
@@ -14,6 +15,7 @@ export const appRouter = createTRPCRouter({
   chat: chatRouter,
   peraturan: peraturanRouter,
   admin: adminRouter,
+  kalkulator: kalkulatorRouter,
 });
 
 // export type definition of API
