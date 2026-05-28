@@ -39,6 +39,15 @@ export type TarifDetail = {
   pajak?: number;
 };
 
+export type FollowUpQuestion = {
+  id: string;
+  label: string;
+  options: Array<{
+    value: string;
+    label: string;
+  }>;
+};
+
 export type TaxCalculationResult = {
   kategori: string;
   subKategori: string;
@@ -51,6 +60,7 @@ export type TaxCalculationResult = {
   dasarHukum: SourceCitation[];
   ringkasan: string;
   inputParsed: Record<string, unknown>;
+  followUpQuestions: FollowUpQuestion[];
 };
 
 // ---------------------------------------------------------------------------
@@ -128,6 +138,53 @@ Pastikan JSON valid dan dapat di-parse.
 }
 <<<END_KALKULASI>>>
 
+## FOLLOW-UP QUESTIONS (PERTANYAAN LANJUTAN)
+Setelah blok <<<KALKULASI>>>, jika ada parameter penting yang TIDAK disebutkan pengguna dan kamu harus MENGASUMSIKAN nilainya, buat blok pertanyaan lanjutan. Ini membantu pengguna memperbaiki asumsi agar perhitungan lebih akurat.
+
+ATURAN FOLLOW-UP:
+1. HANYA tanyakan parameter yang kamu ASUMSIKAN (tidak disebutkan pengguna) dan akan MENGUBAH HASIL perhitungan secara signifikan.
+2. JANGAN tanyakan parameter yang sudah disebutkan pengguna.
+3. Jika pengguna sudah memberikan semua informasi yang relevan, JANGAN buat blok follow-up.
+4. Jika prompt sudah mengandung "Informasi tambahan:" artinya pengguna sudah menjawab pertanyaan sebelumnya, JANGAN tanyakan lagi parameter yang sudah dijawab.
+5. Maksimal 4 pertanyaan.
+
+Parameter yang umum perlu ditanyakan:
+- **Status PTKP** (untuk PPh 21): TK/0, TK/1, TK/2, TK/3, K/0, K/1, K/2, K/3
+- **Kepemilikan NPWP** (mempengaruhi tarif): Ya atau Tidak
+- **Metode Perhitungan** (untuk PPh 21): Gross, Gross-Up, atau Nett
+- **Status PKP** (untuk PPN): PKP atau Non-PKP
+- **Tunjangan/Bonus** (untuk PPh 21): Ada tunjangan atau tidak
+- **Jenis Usaha** (untuk PPh Final UMKM): PT/CV/Orang Pribadi
+- **Lama Usaha** (untuk PPh Final UMKM 0.5%): Berapa tahun sudah berjalan
+
+Format output:
+<<<FOLLOW_UP>>>
+[
+  {
+    "id": "ptkp_status",
+    "label": "Status PTKP (Penghasilan Tidak Kena Pajak)",
+    "options": [
+      { "value": "TK/0", "label": "TK/0 - Tidak Kawin, tanpa tanggungan" },
+      { "value": "TK/1", "label": "TK/1 - Tidak Kawin, 1 tanggungan" },
+      { "value": "TK/2", "label": "TK/2 - Tidak Kawin, 2 tanggungan" },
+      { "value": "TK/3", "label": "TK/3 - Tidak Kawin, 3 tanggungan" },
+      { "value": "K/0", "label": "K/0 - Kawin, tanpa tanggungan" },
+      { "value": "K/1", "label": "K/1 - Kawin, 1 tanggungan" },
+      { "value": "K/2", "label": "K/2 - Kawin, 2 tanggungan" },
+      { "value": "K/3", "label": "K/3 - Kawin, 3 tanggungan" }
+    ]
+  },
+  {
+    "id": "npwp",
+    "label": "Apakah Anda memiliki NPWP?",
+    "options": [
+      { "value": "Ya", "label": "Ya, memiliki NPWP" },
+      { "value": "Tidak", "label": "Tidak memiliki NPWP (tarif 20% lebih tinggi)" }
+    ]
+  }
+]
+<<<END_FOLLOW_UP>>>
+
 ## PENTING
 - Semua angka pajak dalam Rupiah (tanpa simbol Rp dalam angka JSON, hanya angka).
 - Field "analisis" bisa berisi markdown untuk penjelasan lebih detail.
@@ -201,12 +258,13 @@ export async function calculateTax(
       dasarHukum: [],
       ringkasan: "Gagal menghitung pajak",
       inputParsed: {},
+      followUpQuestions: [],
     };
   }
 }
 
 // ---------------------------------------------------------------------------
-// Parse the <<<KALKULASI>>> JSON block from AI response
+// Parse the <<<KALKULASI>>> and <<<FOLLOW_UP>>> JSON blocks from AI response
 // ---------------------------------------------------------------------------
 function parseCalculationResult(rawText: string): TaxCalculationResult {
   const fallback: TaxCalculationResult = {
@@ -221,6 +279,7 @@ function parseCalculationResult(rawText: string): TaxCalculationResult {
     dasarHukum: [],
     ringkasan: "Tidak dapat menghitung pajak dari deskripsi yang diberikan",
     inputParsed: {},
+    followUpQuestions: [],
   };
 
   try {
@@ -235,6 +294,29 @@ function parseCalculationResult(rawText: string): TaxCalculationResult {
 
     const jsonStr = match[1].trim();
     const parsed = JSON.parse(jsonStr);
+
+    // Parse follow-up questions if present
+    let followUpQuestions: FollowUpQuestion[] = [];
+    try {
+      const followUpRegex = /<<<FOLLOW_UP>>>\s*([\s\S]*?)\s*<<<END_FOLLOW_UP>>>/;
+      const followUpMatch = rawText.match(followUpRegex);
+      if (followUpMatch && followUpMatch[1]) {
+        const followUpParsed = JSON.parse(followUpMatch[1].trim());
+        if (Array.isArray(followUpParsed)) {
+          followUpQuestions = followUpParsed.filter(
+            (q: any) =>
+              q &&
+              typeof q.id === "string" &&
+              typeof q.label === "string" &&
+              Array.isArray(q.options) &&
+              q.options.length > 0,
+          );
+        }
+      }
+    } catch (followUpError) {
+      console.error("[Calculator] Failed to parse follow-up questions", followUpError);
+      // Non-critical, continue without follow-ups
+    }
 
     return {
       kategori: parsed.kategori ?? fallback.kategori,
@@ -255,6 +337,7 @@ function parseCalculationResult(rawText: string): TaxCalculationResult {
         : [],
       ringkasan: parsed.ringkasan ?? "",
       inputParsed: parsed.inputParsed ?? {},
+      followUpQuestions,
     };
   } catch (error) {
     console.error("[Calculator] Failed to parse calculation result", error);

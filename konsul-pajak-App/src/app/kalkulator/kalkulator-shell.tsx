@@ -23,6 +23,10 @@ import {
   ExternalLink,
   History,
   Clock,
+  HelpCircle,
+  CheckCircle2,
+  SkipForward,
+  RefreshCw,
 } from "lucide-react";
 
 import { PublicHeader } from "@/components/public-header";
@@ -51,6 +55,15 @@ type TarifDetail = {
   pajak?: number;
 };
 
+type FollowUpQuestion = {
+  id: string;
+  label: string;
+  options: Array<{
+    value: string;
+    label: string;
+  }>;
+};
+
 type TaxCalculationResult = {
   kategori: string;
   subKategori: string;
@@ -67,6 +80,7 @@ type TaxCalculationResult = {
   }>;
   ringkasan: string;
   inputParsed: Record<string, unknown>;
+  followUpQuestions: FollowUpQuestion[];
 };
 
 // ---------------------------------------------------------------------------
@@ -161,9 +175,11 @@ function CalculationResultPanel({ result }: { result: TaxCalculationResult }) {
         <div className="text-3xl md:text-4xl font-bold mb-2">
           {formatRupiah(result.pajakTerutang)}
         </div>
-        <p className="text-sm text-primary-foreground/80">
-          {result.ringkasan}
-        </p>
+        <div className="prose-chat text-sm text-primary-foreground/80 [&_strong]:text-primary-foreground [&_p]:m-0">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {result.ringkasan}
+          </ReactMarkdown>
+        </div>
       </div>
 
       {/* Kategori + DPP Row */}
@@ -454,12 +470,79 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
   const handleReset = () => {
     setResult(null);
     setDescription("");
+    setFollowUpAnswers({});
   };
 
   const handleLoadFromHistory = (historyItem: any) => {
     setResult(historyItem.resultJson as TaxCalculationResult);
     setDescription(historyItem.inputText);
     setShowHistory(false);
+  };
+
+  // ─── Follow-up questions state ──────────────────────────────────
+  const [followUpAnswers, setFollowUpAnswers] = useState<Record<string, string>>({});
+
+  const handleFollowUpSelect = (questionId: string, value: string) => {
+    setFollowUpAnswers((prev) => {
+      // Toggle: if same value clicked again, deselect
+      if (prev[questionId] === value) {
+        const next = { ...prev };
+        delete next[questionId];
+        return next;
+      }
+      return { ...prev, [questionId]: value };
+    });
+  };
+
+  const handleFollowUpSkip = (questionId: string) => {
+    setFollowUpAnswers((prev) => {
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
+  };
+
+  const handleFollowUpRecalculate = async () => {
+    if (!result || Object.keys(followUpAnswers).length === 0) return;
+
+    // Build the enriched prompt
+    const questions = result.followUpQuestions;
+    const additionalLines: string[] = [];
+    for (const q of questions) {
+      const answer = followUpAnswers[q.id];
+      if (answer) {
+        const selectedOption = q.options.find((o) => o.value === answer);
+        additionalLines.push(`${q.label}: ${selectedOption?.label ?? answer}`);
+      }
+    }
+
+    const enrichedPrompt = `${description.trim()}\n\nInformasi tambahan:\n${additionalLines.map((l) => `- ${l}`).join("\n")}`;
+
+    // Update the prompt box with enriched text
+    setDescription(enrichedPrompt);
+    setFollowUpAnswers({});
+
+    // Re-calculate
+    try {
+      if (isGuest) {
+        // Guest can't recalculate (already used their free try)
+        return;
+      }
+      const authResult = await calculateMutation.mutateAsync({
+        description: enrichedPrompt,
+      });
+      setResult(authResult.result);
+      void creditsQuery.refetch();
+      void historyQuery.refetch();
+    } catch (error: any) {
+      console.error("[Kalkulator] Follow-up recalculation failed", error);
+      if (
+        error?.message?.includes?.("Kredit") ||
+        error?.data?.code === "FORBIDDEN"
+      ) {
+        setShowCreditsExhausted(true);
+      }
+    }
   };
 
   const handleLogout = () => {
@@ -655,8 +738,100 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                   </div>
                 </form>
 
-                {/* Example Prompts */}
-                {!result && (
+                {/* Follow-Up Questions or Example Prompts */}
+                {result && result.followUpQuestions && result.followUpQuestions.length > 0 && !isGuest ? (
+                  /* ── Interactive Follow-Up Questions ── */
+                  <div className="mt-6 pt-5 border-t border-border animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-6 w-6 rounded-lg bg-amber-100 flex items-center justify-center">
+                        <HelpCircle className="h-3.5 w-3.5 text-amber-600" />
+                      </div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Pertanyaan Lanjutan — Perbaiki Asumsi
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                      AI menggunakan beberapa asumsi untuk perhitungan di atas. Pilih opsi di bawah untuk memperbaiki hasil agar lebih akurat.
+                    </p>
+
+                    <div className="space-y-4">
+                      {result.followUpQuestions.map((question) => (
+                        <div key={question.id} className="rounded-xl border border-border bg-muted/30 p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-foreground">
+                              {question.label}
+                            </span>
+                            {followUpAnswers[question.id] ? (
+                              <button
+                                type="button"
+                                onClick={() => handleFollowUpSkip(question.id)}
+                                className="text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1"
+                              >
+                                <SkipForward className="h-3 w-3" />
+                                Batalkan
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground italic">
+                                Opsional
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {question.options.map((option) => {
+                              const isSelected = followUpAnswers[question.id] === option.value;
+                              return (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  onClick={() => handleFollowUpSelect(question.id, option.value)}
+                                  disabled={isCalculating}
+                                  className={`text-left rounded-lg border px-3 py-1.5 text-xs transition-all cursor-pointer disabled:opacity-50 ${
+                                    isSelected
+                                      ? "border-sidebar-primary bg-sidebar-primary/10 text-sidebar-primary font-medium shadow-sm"
+                                      : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-sidebar-primary/40 hover:bg-muted/50"
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <CheckCircle2 className="h-3 w-3 inline mr-1 -mt-0.5" />
+                                  )}
+                                  {option.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Recalculate button */}
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleFollowUpRecalculate()}
+                        disabled={isCalculating || Object.keys(followUpAnswers).length === 0}
+                        className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        {isCalculating ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Menghitung Ulang...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4" />
+                            Hitung Ulang dengan Info Tambahan
+                            {Object.keys(followUpAnswers).length > 0 && (
+                              <span className="inline-flex items-center rounded-full bg-white/20 px-1.5 py-0.5 text-[10px]">
+                                {Object.keys(followUpAnswers).length} dipilih
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : !result ? (
+                  /* ── Example Prompts (only when no result yet) ── */
                   <div className="mt-6 pt-5 border-t border-border">
                     <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">
                       Contoh Skenario
@@ -677,7 +852,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                       ))}
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
 
               {/* History Panel — Auth users only */}
