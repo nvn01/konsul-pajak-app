@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import ReactMarkdown from "react-markdown";
@@ -29,6 +29,7 @@ import {
   RefreshCw,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
 } from "lucide-react";
 
 import { PublicHeader } from "@/components/public-header";
@@ -417,6 +418,18 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
   const isCalculating =
     calculateMutation.isPending || guestCalculateMutation.isPending;
 
+  const resultPanelRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to result panel on mobile when calculation starts or finishes
+  useEffect(() => {
+    if ((isCalculating || result) && typeof window !== "undefined" && window.innerWidth < 1024) {
+      const timer = setTimeout(() => {
+        resultPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isCalculating, result]);
+
   const handleCalculate = async () => {
     if (!description.trim()) return;
 
@@ -704,6 +717,18 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                   </button>
                 </div>
 
+                {/* Perhitungan Baru Button */}
+                <div className="p-3 border-b border-border">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-sidebar-primary text-sidebar-primary-foreground px-4 py-2.5 text-xs font-bold shadow-sm transition-all hover:bg-sidebar-primary/90 cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Perhitungan Baru
+                  </button>
+                </div>
+
                 {/* History list */}
                 <div className="flex-1 overflow-y-auto">
                   {historyQuery.isLoading ? (
@@ -803,7 +828,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                     />
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2 mt-3">
+                    <div className="mt-3">
                       <button
                         type="submit"
                         disabled={
@@ -811,7 +836,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                           !description.trim() ||
                           (isGuest && guestCalculated)
                         }
-                        className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-sidebar-primary px-5 py-2.5 text-sm font-semibold text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-sidebar-primary px-5 py-2.5 text-sm font-semibold text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                       >
                         {isCalculating ? (
                           <>
@@ -825,15 +850,6 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                           </>
                         )}
                       </button>
-                      {result && (
-                        <button
-                          type="button"
-                          onClick={handleReset}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                        >
-                          Hitung Ulang
-                        </button>
-                      )}
                     </div>
                   </form>
                 </div>
@@ -943,8 +959,8 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                   </div>
                 )}
 
-                {/* ── Example Prompts (only when no result yet) ── */}
-                {!result && (
+                {/* ── Example Prompts (only when no result yet and not loading) ── */}
+                {!result && !isCalculating && (
                   <div className="rounded-2xl border border-border bg-card p-5">
                     <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">
                       Contoh Skenario
@@ -969,7 +985,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
               </div>
 
               {/* RIGHT PANEL — Result */}
-              <div className="flex flex-col">
+              <div ref={resultPanelRef} className="flex flex-col scroll-mt-20">
                 {isCalculating ? (
                   <div className="rounded-2xl border border-border bg-card p-6 flex-1 flex items-center justify-center">
                     <CalculatingIndicator />
