@@ -487,12 +487,14 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
     setResult(null);
     setDescription("");
     setFollowUpAnswers({});
+    setSidebarOpen(false);
   };
 
   const handleLoadFromHistory = (historyItem: any) => {
     setResult(historyItem.resultJson as TaxCalculationResult);
     setDescription(historyItem.inputText);
     setShowHistory(false);
+    setSidebarOpen(false);
   };
 
   // ─── Follow-up questions state ──────────────────────────────────
@@ -573,7 +575,17 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
       ) : (
         <header className="bg-primary text-primary-foreground border-primary-foreground/10 border-b px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {!isGuest && (
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="lg:hidden h-8 w-8 rounded-lg flex items-center justify-center text-primary-foreground hover:bg-primary-foreground/10 transition-colors cursor-pointer"
+                  title={sidebarOpen ? "Tutup riwayat" : "Buka riwayat"}
+                >
+                  <History className="h-5 w-5" />
+                </button>
+              )}
               <Link href="/" className="flex items-center gap-2">
                 <img
                   src="/logo-header.png"
@@ -688,11 +700,20 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
         {/* ═══════ HISTORY SIDEBAR (Auth only, hidden by default) ═══════ */}
         {!isGuest && (
           <>
+            {/* Mobile backdrop for sidebar */}
+            {sidebarOpen && (
+              <div
+                className="fixed inset-0 bg-black/45 z-40 lg:hidden transition-opacity duration-300"
+                onClick={() => setSidebarOpen(false)}
+              />
+            )}
+
             {/* Sidebar panel */}
             <aside
-              className={`border-r border-border bg-card flex flex-col shrink-0 transition-all duration-300 ease-in-out ${
-                sidebarOpen ? "w-72" : "w-0"
-              } overflow-hidden`}
+              className={`border-r border-border bg-card flex flex-col shrink-0 transition-all duration-300 ease-in-out 
+                fixed lg:static top-0 bottom-0 left-0 z-50 lg:z-0 h-full lg:h-auto shadow-2xl lg:shadow-none
+                ${sidebarOpen ? "w-72 translate-x-0" : "w-0 -translate-x-full lg:translate-x-0"}
+                overflow-hidden`}
             >
               <div className="w-72 flex flex-col h-full">
                 {/* Sidebar header */}
