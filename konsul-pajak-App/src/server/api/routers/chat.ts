@@ -273,26 +273,86 @@ export const chatRouter = createTRPCRouter({
       // Augment sources with URLs from Peraturan table
       const augmentedSources = await Promise.all(
         sources.map(async (src) => {
-          let searchStr = src.source;
+          // Strategy 1: Try exact "Nomor X TAHUN Y" pattern
           const numMatch = src.source.match(/Nomor\s+(\d+\s+TAHUN\s+\d+)/i) || src.source.match(/No\.?\s+(\d+\s+TAHUN\s+\d+)/i);
           if (numMatch && numMatch[1]) {
-            searchStr = numMatch[1];
+            const peraturan = await ctx.db.peraturan.findFirst({
+              where: {
+                OR: [
+                  { nomor: { contains: numMatch[1], mode: 'insensitive' } },
+                  { title: { contains: numMatch[1], mode: 'insensitive' } },
+                ],
+              },
+              select: { url: true },
+            });
+            if (peraturan?.url) {
+              return { ...src, url: peraturan.url };
+            }
           }
 
-          const peraturan = await ctx.db.peraturan.findFirst({
+          // Strategy 2: Try type+number pattern (PP 55/2022, PMK 168/2023, SE-5/PJ/2024, etc.)
+          const typeNumMatch = src.source.match(
+            /(?:PP|PMK|SE|PER|Perpres|Peraturan\s+Pemerintah|Peraturan\s+Menteri\s+Keuangan|Surat\s+Edaran)[- ]*(?:Nomor\s*)?(\d[\w/.-]*(?:\s*(?:Tahun|\/)\s*\d{4})?)/i
+          );
+          if (typeNumMatch && typeNumMatch[1]) {
+            const searchNum = typeNumMatch[1].replace(/\s+/g, ' ').trim();
+            const peraturan = await ctx.db.peraturan.findFirst({
+              where: {
+                OR: [
+                  { nomor: { contains: searchNum, mode: 'insensitive' } },
+                  { title: { contains: searchNum, mode: 'insensitive' } },
+                ],
+              },
+              select: { url: true },
+            });
+            if (peraturan?.url) {
+              return { ...src, url: peraturan.url };
+            }
+          }
+
+          // Strategy 3: Broad keyword search — year + number across title/deskripsi
+          const cleanedSource = src.source
+            .replace(/(?:Pasal|Ayat|huruf|angka|jo\.?|dan|atau|tentang)\s*/gi, ' ')
+            .replace(/[(),.:;""'"]/g, ' ')
+            .trim();
+          const yearMatch = cleanedSource.match(/\b(19|20)\d{2}\b/);
+          const broadNumMatch = cleanedSource.match(/\b(\d+)\b/);
+
+          if (yearMatch && broadNumMatch) {
+            const peraturan = await ctx.db.peraturan.findFirst({
+              where: {
+                AND: [
+                  { tahun: yearMatch[0] },
+                  {
+                    OR: [
+                      { nomor: { contains: broadNumMatch[1], mode: 'insensitive' } },
+                      { title: { contains: cleanedSource.substring(0, 60), mode: 'insensitive' } },
+                    ],
+                  },
+                ],
+              },
+              select: { url: true },
+            });
+            if (peraturan?.url) {
+              return { ...src, url: peraturan.url };
+            }
+          }
+
+          // Strategy 4: Last resort — full-text search on the raw source string
+          const peraturanFallback = await ctx.db.peraturan.findFirst({
             where: {
               OR: [
-                { nomor: { contains: searchStr, mode: 'insensitive' } },
-                { title: { contains: searchStr, mode: 'insensitive' } },
+                { title: { contains: src.source.substring(0, 80), mode: 'insensitive' } },
+                { deskripsi: { contains: src.source.substring(0, 80), mode: 'insensitive' } },
               ],
             },
             select: { url: true },
           });
+          if (peraturanFallback?.url) {
+            return { ...src, url: peraturanFallback.url };
+          }
 
-          return {
-            ...src,
-            url: peraturan?.url ?? undefined,
-          };
+          return { ...src, url: undefined };
         })
       );
 

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   LogOut,
   Send,
@@ -19,6 +21,8 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  History,
+  Clock,
 } from "lucide-react";
 
 import { PublicHeader } from "@/components/public-header";
@@ -289,8 +293,10 @@ function CalculationResultPanel({ result }: { result: TaxCalculationResult }) {
               Analisis AI
             </span>
           </div>
-          <div className="prose-chat text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-            {result.analisis}
+          <div className="prose-chat text-sm text-foreground leading-relaxed">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {result.analisis}
+            </ReactMarkdown>
           </div>
         </div>
       )}
@@ -383,6 +389,12 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
   const calculateMutation = api.kalkulator.calculate.useMutation();
   const guestCalculateMutation = api.kalkulator.guestCalculate.useMutation();
 
+  // History for logged-in users
+  const historyQuery = api.kalkulator.getHistory.useQuery(undefined, {
+    enabled: !isGuest,
+  });
+  const [showHistory, setShowHistory] = useState(false);
+
   const isCalculating =
     calculateMutation.isPending || guestCalculateMutation.isPending;
 
@@ -415,8 +427,9 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
           description: description.trim(),
         });
         setResult(authResult.result);
-        // Invalidate credits
+        // Invalidate credits and history
         void creditsQuery.refetch();
+        void historyQuery.refetch();
       }
     } catch (error: any) {
       console.error("[Kalkulator] Calculation failed", error);
@@ -441,6 +454,12 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
   const handleReset = () => {
     setResult(null);
     setDescription("");
+  };
+
+  const handleLoadFromHistory = (historyItem: any) => {
+    setResult(historyItem.resultJson as TaxCalculationResult);
+    setDescription(historyItem.inputText);
+    setShowHistory(false);
   };
 
   const handleLogout = () => {
@@ -660,6 +679,81 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                   </div>
                 )}
               </div>
+
+              {/* History Panel — Auth users only */}
+              {!isGuest && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowHistory(!showHistory)}
+                    className="w-full flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <History className="h-4 w-4" />
+                      <span>Riwayat Perhitungan</span>
+                      {historyQuery.data && historyQuery.data.length > 0 && (
+                        <span className="inline-flex items-center rounded-full bg-sidebar-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-sidebar-primary">
+                          {historyQuery.data.length}
+                        </span>
+                      )}
+                    </div>
+                    {showHistory ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </button>
+
+                  {showHistory && (
+                    <div className="mt-2 rounded-xl border border-border bg-card overflow-hidden animate-in slide-in-from-top-2 duration-200">
+                      {historyQuery.isLoading ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                          Memuat riwayat...
+                        </div>
+                      ) : !historyQuery.data || historyQuery.data.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          Belum ada riwayat perhitungan
+                        </div>
+                      ) : (
+                        <div className="max-h-[300px] overflow-y-auto divide-y divide-border">
+                          {historyQuery.data.map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => handleLoadFromHistory(item)}
+                              className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer group"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="inline-flex items-center rounded-full bg-sidebar-primary/10 px-2 py-0.5 text-[10px] font-medium text-sidebar-primary">
+                                  {item.kategori}
+                                </span>
+                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                  <Clock className="h-3 w-3" />
+                                  {new Date(item.createdAt).toLocaleDateString(
+                                    "id-ID",
+                                    {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    },
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground line-clamp-2 group-hover:text-foreground transition-colors">
+                                {item.inputText}
+                              </p>
+                              <div className="mt-1 text-xs font-semibold text-foreground">
+                                {formatRupiah(item.pajakTerutang)}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* RIGHT PANEL — Result */}
