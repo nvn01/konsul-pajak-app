@@ -27,6 +27,8 @@ import {
   CheckCircle2,
   SkipForward,
   RefreshCw,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 import { PublicHeader } from "@/components/public-header";
@@ -410,6 +412,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
     enabled: !isGuest,
   });
   const [showHistory, setShowHistory] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isCalculating =
     calculateMutation.isPending || guestCalculateMutation.isPending;
@@ -666,318 +669,353 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
         </header>
       )}
 
-      {/* Main Content — Split Panel */}
-      <main className="flex-1 overflow-y-auto bg-background">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[calc(100vh-140px)]">
-            {/* LEFT PANEL — Input */}
-            <div className="flex flex-col">
-              <div className="rounded-2xl border border-border bg-card p-6 flex flex-col h-full">
-                {/* Title */}
-                <div className="mb-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="h-10 w-10 rounded-xl bg-sidebar-primary/10 flex items-center justify-center">
-                      <Calculator className="h-5 w-5 text-sidebar-primary" />
+      {/* Main Content — Sidebar + Split Panel */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* ═══════ HISTORY SIDEBAR (Auth only, hidden by default) ═══════ */}
+        {!isGuest && (
+          <>
+            {/* Sidebar panel */}
+            <aside
+              className={`border-r border-border bg-card flex flex-col shrink-0 transition-all duration-300 ease-in-out ${
+                sidebarOpen ? "w-72" : "w-0"
+              } overflow-hidden`}
+            >
+              <div className="w-72 flex flex-col h-full">
+                {/* Sidebar header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4 text-sidebar-primary" />
+                    <span className="text-sm font-semibold text-foreground">
+                      Riwayat
+                    </span>
+                    {historyQuery.data && historyQuery.data.length > 0 && (
+                      <span className="inline-flex items-center rounded-full bg-sidebar-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-sidebar-primary">
+                        {historyQuery.data.length}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSidebarOpen(false)}
+                    className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                    title="Tutup sidebar"
+                  >
+                    <PanelLeftClose className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* History list */}
+                <div className="flex-1 overflow-y-auto">
+                  {historyQuery.isLoading ? (
+                    <div className="p-6 text-center text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                      Memuat...
+                    </div>
+                  ) : !historyQuery.data || historyQuery.data.length === 0 ? (
+                    <div className="p-6 text-center">
+                      <div className="mx-auto h-10 w-10 rounded-xl bg-muted flex items-center justify-center mb-3">
+                        <Calculator className="h-5 w-5 text-muted-foreground/40" />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Belum ada riwayat perhitungan
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {historyQuery.data.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleLoadFromHistory(item)}
+                          className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer group"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="inline-flex items-center rounded-full bg-sidebar-primary/10 px-2 py-0.5 text-[10px] font-medium text-sidebar-primary">
+                              {item.kategori}
+                            </span>
+                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              {new Date(item.createdAt).toLocaleDateString(
+                                "id-ID",
+                                { day: "numeric", month: "short" },
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2 group-hover:text-foreground transition-colors">
+                            {item.inputText}
+                          </p>
+                          <div className="mt-1 text-xs font-bold text-foreground">
+                            {formatRupiah(item.pajakTerutang)}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </aside>
+
+            {/* Sidebar toggle button (visible when closed) */}
+            {!sidebarOpen && (
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="hidden lg:flex shrink-0 w-8 border-r border-border bg-card items-center justify-center hover:bg-muted/50 transition-colors cursor-pointer group"
+                title="Buka riwayat perhitungan"
+              >
+                <PanelLeftOpen className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              </button>
+            )}
+          </>
+        )}
+
+        {/* ═══════ MAIN AREA ═══════ */}
+        <main className="flex-1 overflow-y-auto bg-background">
+          <div className="mx-auto max-w-7xl px-4 py-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[calc(100vh-140px)]">
+              {/* LEFT PANEL — Input + Follow-up */}
+              <div className="flex flex-col gap-4">
+                {/* Input Card */}
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  {/* Title */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-9 w-9 rounded-xl bg-sidebar-primary/10 flex items-center justify-center">
+                      <Calculator className="h-4.5 w-4.5 text-sidebar-primary" />
                     </div>
                     <div>
-                      <h1 className="text-xl font-bold text-foreground">
+                      <h1 className="text-lg font-bold text-foreground">
                         Kalkulator Pajak AI
                       </h1>
-                      <p className="text-xs text-muted-foreground">
-                        Deskripsikan situasi keuangan Anda, AI akan menghitung
-                        pajaknya
+                      <p className="text-[11px] text-muted-foreground">
+                        Deskripsikan situasi keuangan Anda
                       </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Textarea */}
-                <form onSubmit={handleSubmit} className="flex flex-col flex-1">
-                  <div className="flex-1 mb-4">
+                  {/* Textarea */}
+                  <form onSubmit={handleSubmit}>
                     <Textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Ceritakan situasi keuangan Anda...&#10;&#10;Contoh: Saya karyawan swasta dengan gaji Rp 10 juta/bulan, status menikah dengan 1 tanggungan (K/1). Berapa PPh 21 saya?"
-                      className="min-h-[180px] h-full resize-none border border-border rounded-xl bg-background px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground/60"
+                      placeholder="Contoh: Saya karyawan dengan gaji Rp 10 juta/bulan. Berapa PPh 21 saya?"
+                      className="min-h-[100px] max-h-[160px] resize-none border border-border rounded-xl bg-background px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground/60"
                       disabled={isCalculating || (isGuest && guestCalculated)}
                     />
-                  </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      disabled={
-                        isCalculating ||
-                        !description.trim() ||
-                        (isGuest && guestCalculated)
-                      }
-                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-sidebar-primary px-5 py-3 text-sm font-semibold text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      {isCalculating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Menghitung...
-                        </>
-                      ) : (
-                        <>
-                          <Calculator className="h-4 w-4" />
-                          Hitung Pajak
-                        </>
-                      )}
-                    </button>
-                    {result && (
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 mt-3">
                       <button
-                        type="button"
-                        onClick={handleReset}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                      >
-                        Hitung Ulang
-                      </button>
-                    )}
-                  </div>
-                </form>
-
-                {/* Follow-Up Questions or Example Prompts */}
-                {result && result.followUpQuestions && result.followUpQuestions.length > 0 && !isGuest ? (
-                  /* ── Interactive Follow-Up Questions ── */
-                  <div className="mt-6 pt-5 border-t border-border animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="h-6 w-6 rounded-lg bg-amber-100 flex items-center justify-center">
-                        <HelpCircle className="h-3.5 w-3.5 text-amber-600" />
-                      </div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Pertanyaan Lanjutan — Perbaiki Asumsi
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-                      AI menggunakan beberapa asumsi untuk perhitungan di atas. Pilih opsi di bawah untuk memperbaiki hasil agar lebih akurat.
-                    </p>
-
-                    <div className="space-y-4">
-                      {result.followUpQuestions.map((question) => (
-                        <div key={question.id} className="rounded-xl border border-border bg-muted/30 p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-foreground">
-                              {question.label}
-                            </span>
-                            {followUpAnswers[question.id] ? (
-                              <button
-                                type="button"
-                                onClick={() => handleFollowUpSkip(question.id)}
-                                className="text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1"
-                              >
-                                <SkipForward className="h-3 w-3" />
-                                Batalkan
-                              </button>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground italic">
-                                Opsional
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {question.options.map((option) => {
-                              const isSelected = followUpAnswers[question.id] === option.value;
-                              return (
-                                <button
-                                  key={option.value}
-                                  type="button"
-                                  onClick={() => handleFollowUpSelect(question.id, option.value)}
-                                  disabled={isCalculating}
-                                  className={`text-left rounded-lg border px-3 py-1.5 text-xs transition-all cursor-pointer disabled:opacity-50 ${
-                                    isSelected
-                                      ? "border-sidebar-primary bg-sidebar-primary/10 text-sidebar-primary font-medium shadow-sm"
-                                      : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-sidebar-primary/40 hover:bg-muted/50"
-                                  }`}
-                                >
-                                  {isSelected && (
-                                    <CheckCircle2 className="h-3 w-3 inline mr-1 -mt-0.5" />
-                                  )}
-                                  {option.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Recalculate button */}
-                    <div className="mt-4 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void handleFollowUpRecalculate()}
-                        disabled={isCalculating || Object.keys(followUpAnswers).length === 0}
-                        className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        type="submit"
+                        disabled={
+                          isCalculating ||
+                          !description.trim() ||
+                          (isGuest && guestCalculated)
+                        }
+                        className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-sidebar-primary px-5 py-2.5 text-sm font-semibold text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                       >
                         {isCalculating ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            Menghitung Ulang...
+                            Menghitung...
                           </>
                         ) : (
                           <>
-                            <RefreshCw className="h-4 w-4" />
-                            Hitung Ulang dengan Info Tambahan
-                            {Object.keys(followUpAnswers).length > 0 && (
-                              <span className="inline-flex items-center rounded-full bg-white/20 px-1.5 py-0.5 text-[10px]">
-                                {Object.keys(followUpAnswers).length} dipilih
-                              </span>
-                            )}
+                            <Calculator className="h-4 w-4" />
+                            Hitung Pajak
                           </>
                         )}
                       </button>
+                      {result && (
+                        <button
+                          type="button"
+                          onClick={handleReset}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        >
+                          Hitung Ulang
+                        </button>
+                      )}
                     </div>
+                  </form>
+                </div>
+
+                {/* ── Follow-Up Questions ── */}
+                {result && result.followUpQuestions && result.followUpQuestions.length > 0 && !isGuest && (
+                  <div className="rounded-2xl border-2 border-amber-200/60 bg-gradient-to-br from-amber-50 via-orange-50/50 to-yellow-50/30 p-5 animate-in fade-in slide-in-from-bottom-3 duration-500 shadow-sm">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+                        <HelpCircle className="h-4.5 w-4.5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-amber-900">
+                          Perbaiki Perhitungan
+                        </h3>
+                        <p className="text-[11px] text-amber-700/70">
+                          AI membuat asumsi — pilih opsi untuk hasil lebih akurat
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Questions */}
+                    <div className="space-y-3">
+                      {result.followUpQuestions.map((question) => {
+                        const isAnswered = !!followUpAnswers[question.id];
+                        return (
+                          <div
+                            key={question.id}
+                            className={`rounded-xl p-3 transition-all duration-200 ${
+                              isAnswered
+                                ? "bg-white/80 border-2 border-amber-300 shadow-sm"
+                                : "bg-white/50 border border-amber-200/50"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2.5">
+                              <span className="text-[13px] font-semibold text-amber-900">
+                                {question.label}
+                              </span>
+                              {isAnswered ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleFollowUpSkip(question.id)}
+                                  className="text-[10px] text-amber-600 hover:text-amber-800 transition-colors cursor-pointer flex items-center gap-1 font-medium"
+                                >
+                                  <SkipForward className="h-3 w-3" />
+                                  Batalkan
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-amber-500/70 italic font-medium">
+                                  Opsional
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {question.options.map((option) => {
+                                const isSelected = followUpAnswers[question.id] === option.value;
+                                return (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => handleFollowUpSelect(question.id, option.value)}
+                                    disabled={isCalculating}
+                                    className={`rounded-lg border-2 px-3 py-2 text-xs font-medium transition-all cursor-pointer disabled:opacity-50 ${
+                                      isSelected
+                                        ? "border-amber-400 bg-gradient-to-r from-amber-400 to-orange-400 text-white shadow-md scale-[1.02]"
+                                        : "border-amber-200/70 bg-white text-amber-800 hover:border-amber-300 hover:bg-amber-50 hover:shadow-sm"
+                                    }`}
+                                  >
+                                    {isSelected && (
+                                      <CheckCircle2 className="h-3.5 w-3.5 inline mr-1.5 -mt-0.5" />
+                                    )}
+                                    {option.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Recalculate button */}
+                    <button
+                      type="button"
+                      onClick={() => void handleFollowUpRecalculate()}
+                      disabled={isCalculating || Object.keys(followUpAnswers).length === 0}
+                      className="w-full mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 text-sm font-bold text-white shadow-md transition-all hover:from-amber-600 hover:to-orange-600 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer"
+                    >
+                      {isCalculating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Menghitung Ulang...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4" />
+                          Hitung Ulang dengan Info Tambahan
+                          {Object.keys(followUpAnswers).length > 0 && (
+                            <span className="inline-flex items-center rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold">
+                              {Object.keys(followUpAnswers).length} dipilih
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </button>
                   </div>
-                ) : !result ? (
-                  /* ── Example Prompts (only when no result yet) ── */
-                  <div className="mt-6 pt-5 border-t border-border">
+                )}
+
+                {/* ── Example Prompts (only when no result yet) ── */}
+                {!result && (
+                  <div className="rounded-2xl border border-border bg-card p-5">
                     <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">
                       Contoh Skenario
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col gap-2">
                       {EXAMPLE_PROMPTS.map((prompt, i) => (
                         <button
                           key={i}
                           type="button"
                           onClick={() => handleExampleClick(prompt)}
                           disabled={isCalculating || (isGuest && guestCalculated)}
-                          className="text-left rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted hover:border-sidebar-primary/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="text-left rounded-xl border border-border bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted hover:border-sidebar-primary/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {prompt.length > 80
-                            ? prompt.substring(0, 80) + "..."
+                          {prompt.length > 100
+                            ? prompt.substring(0, 100) + "..."
                             : prompt}
                         </button>
                       ))}
                     </div>
                   </div>
-                ) : null}
+                )}
               </div>
 
-              {/* History Panel — Auth users only */}
-              {!isGuest && (
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowHistory(!showHistory)}
-                    className="w-full flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <History className="h-4 w-4" />
-                      <span>Riwayat Perhitungan</span>
-                      {historyQuery.data && historyQuery.data.length > 0 && (
-                        <span className="inline-flex items-center rounded-full bg-sidebar-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-sidebar-primary">
-                          {historyQuery.data.length}
-                        </span>
-                      )}
-                    </div>
-                    {showHistory ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </button>
-
-                  {showHistory && (
-                    <div className="mt-2 rounded-xl border border-border bg-card overflow-hidden animate-in slide-in-from-top-2 duration-200">
-                      {historyQuery.isLoading ? (
-                        <div className="p-4 text-center text-sm text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                          Memuat riwayat...
-                        </div>
-                      ) : !historyQuery.data || historyQuery.data.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-muted-foreground">
-                          Belum ada riwayat perhitungan
-                        </div>
-                      ) : (
-                        <div className="max-h-[300px] overflow-y-auto divide-y divide-border">
-                          {historyQuery.data.map((item) => (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => handleLoadFromHistory(item)}
-                              className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer group"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="inline-flex items-center rounded-full bg-sidebar-primary/10 px-2 py-0.5 text-[10px] font-medium text-sidebar-primary">
-                                  {item.kategori}
-                                </span>
-                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                  <Clock className="h-3 w-3" />
-                                  {new Date(item.createdAt).toLocaleDateString(
-                                    "id-ID",
-                                    {
-                                      day: "numeric",
-                                      month: "short",
-                                      year: "numeric",
-                                    },
-                                  )}
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground line-clamp-2 group-hover:text-foreground transition-colors">
-                                {item.inputText}
-                              </p>
-                              <div className="mt-1 text-xs font-semibold text-foreground">
-                                {formatRupiah(item.pajakTerutang)}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* RIGHT PANEL — Result */}
-            <div className="flex flex-col">
-              {isCalculating ? (
-                <div className="rounded-2xl border border-border bg-card p-6 flex-1 flex items-center justify-center">
-                  <CalculatingIndicator />
-                </div>
-              ) : result ? (
-                <CalculationResultPanel result={result} />
-              ) : (
-                /* Empty State */
-                <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 flex-1 flex items-center justify-center">
-                  <div className="text-center max-w-sm">
-                    <div className="mx-auto h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-                      <Scale className="h-8 w-8 text-muted-foreground/40" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Hasil Perhitungan
-                    </h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Deskripsikan situasi keuangan Anda di panel kiri, lalu
-                      klik <strong>&quot;Hitung Pajak&quot;</strong> untuk
-                      melihat perhitungan lengkap di sini.
-                    </p>
-                    <div className="mt-4 flex flex-wrap justify-center gap-2">
-                      {[
-                        "Kategori Pajak",
-                        "Tarif",
-                        "DPP",
-                        "Perhitungan",
-                        "Analisis AI",
-                        "Dasar Hukum",
-                      ].map((label) => (
-                        <span
-                          key={label}
-                          className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium text-muted-foreground"
-                        >
-                          {label}
-                        </span>
-                      ))}
+              {/* RIGHT PANEL — Result */}
+              <div className="flex flex-col">
+                {isCalculating ? (
+                  <div className="rounded-2xl border border-border bg-card p-6 flex-1 flex items-center justify-center">
+                    <CalculatingIndicator />
+                  </div>
+                ) : result ? (
+                  <CalculationResultPanel result={result} />
+                ) : (
+                  /* Empty State */
+                  <div className="rounded-2xl border border-dashed border-border bg-card/50 p-6 flex-1 flex items-center justify-center">
+                    <div className="text-center max-w-sm">
+                      <div className="mx-auto h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                        <Scale className="h-8 w-8 text-muted-foreground/40" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                        Hasil Perhitungan
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Deskripsikan situasi keuangan Anda di panel kiri, lalu
+                        klik <strong>&quot;Hitung Pajak&quot;</strong> untuk
+                        melihat perhitungan lengkap di sini.
+                      </p>
+                      <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        {[
+                          "Kategori Pajak",
+                          "Tarif",
+                          "DPP",
+                          "Perhitungan",
+                          "Analisis AI",
+                          "Dasar Hukum",
+                        ].map((label) => (
+                          <span
+                            key={label}
+                            className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium text-muted-foreground"
+                          >
+                            {label}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
 
       {/* Guest signup prompt modal */}
       {showSignupPrompt && isGuest && (
