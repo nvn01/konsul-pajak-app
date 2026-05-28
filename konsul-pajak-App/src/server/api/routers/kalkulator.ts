@@ -69,7 +69,7 @@ export const kalkulatorRouter = createTRPCRouter({
 
       // ── Simple spam detection for calculator ──────────
       const quotaConfig = await getQuotaConfig(ctx.db);
-      let cost = 1;
+      let cost = 2;
       let isSpam = false;
 
       // Check time-based spam
@@ -87,10 +87,10 @@ export const kalkulatorRouter = createTRPCRouter({
       }
 
       if (user.isFlagged) {
-        cost = 3;
+        cost = 4;
       } else if (isSpam) {
         const newSpamStreak = user.spamStreak + 1;
-        cost = Math.min(2 + Math.floor(newSpamStreak / 2), 4);
+        cost = Math.min(3 + Math.floor(newSpamStreak / 2), 5);
       }
 
       // Deduct credits

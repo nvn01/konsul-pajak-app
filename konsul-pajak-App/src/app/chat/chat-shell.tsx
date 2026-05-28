@@ -455,18 +455,19 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
 
           {/* Toggle Tabs */}
           <div className="flex items-center bg-white rounded-full p-1 shadow-sm">
-            <div className="px-5 py-2 rounded-full text-sm font-medium text-sidebar-primary-foreground bg-sidebar-primary">
-              Tanya Pajak AI
+            <div className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-sidebar-primary-foreground bg-sidebar-primary">
+              <span className="hidden sm:inline">Tanya Pajak AI</span>
+              <span className="sm:hidden">Tanya AI</span>
             </div>
             <Link
               href="/direktori"
-              className="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
             >
               Direktori
             </Link>
             <Link
               href="/kalkulator"
-              className="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
             >
               Kalkulator
             </Link>

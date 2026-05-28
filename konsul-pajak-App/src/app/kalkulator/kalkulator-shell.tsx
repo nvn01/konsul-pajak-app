@@ -588,17 +588,18 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
             <div className="flex items-center bg-white rounded-full p-1 shadow-sm">
               <Link
                 href="/chat"
-                className="px-4 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
               >
-                Tanya Pajak AI
+                <span className="hidden sm:inline">Tanya Pajak AI</span>
+                <span className="sm:hidden">Tanya AI</span>
               </Link>
               <Link
                 href="/direktori"
-                className="px-4 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
               >
                 Direktori
               </Link>
-              <div className="px-4 py-2 rounded-full text-sm font-medium text-sidebar-primary-foreground bg-sidebar-primary">
+              <div className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-sidebar-primary-foreground bg-sidebar-primary">
                 Kalkulator
               </div>
             </div>
@@ -797,7 +798,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
         {/* ═══════ MAIN AREA ═══════ */}
         <main className="flex-1 overflow-y-auto bg-background">
           <div className="mx-auto max-w-7xl px-4 py-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[calc(100vh-140px)]">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:min-h-[calc(100vh-140px)]">
               {/* LEFT PANEL — Input + Follow-up */}
               <div className="flex flex-col gap-4">
                 {/* Input Card */}
