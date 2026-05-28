@@ -1,13 +1,13 @@
 import "nvn/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Geist, Manrope } from "next/font/google";
+import { Inter, Manrope } from "next/font/google";
 
 import { AppProviders } from "@/components/providers";
 
-const geist = Geist({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  variable: "--font-inter",
 });
 
 const manrope = Manrope({
@@ -25,7 +25,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${manrope.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${manrope.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <AppProviders>{children}</AppProviders>
       </body>
