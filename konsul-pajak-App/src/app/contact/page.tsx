@@ -4,7 +4,7 @@ import Link from "next/link";
 import { PublicHeader } from "@/components/public-header";
 import { BrandText } from "@/components/brand-text";
 import { useSession } from "next-auth/react";
-import { Info, MessageCircle, BookOpen } from "lucide-react";
+import { Info, MessageCircle, BookOpen, ArrowLeft } from "lucide-react";
 
 export default function ContactPage() {
   const { data: session } = useSession();
@@ -21,8 +21,9 @@ export default function ContactPage() {
               <img src="/logo-header.png" alt="KP" className="h-8 w-8 object-contain" />
               <BrandText className="text-lg" />
             </Link>
-            <Link href="/chat" className="text-sm text-primary-foreground/80 hover:text-primary-foreground transition-colors">
-              ← Kembali ke Chat
+            <Link href="/chat" className="flex items-center gap-1.5 text-sm text-primary-foreground/80 hover:text-primary-foreground transition-colors font-medium">
+              <ArrowLeft className="h-4 w-4" />
+              <span>Kembali ke Chat</span>
             </Link>
           </div>
         </header>
