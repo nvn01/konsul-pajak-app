@@ -56,8 +56,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-medium text-foreground text-sm">Email</h3>
-                    <a href="mailto:konsulpajak@novn.my.id" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                      konsulpajak@novn.my.id
+                    <a href="mailto:info@tanyapajakai.com" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      info@tanyapajakai.com
                     </a>
                   </div>
                 </div>
@@ -85,8 +85,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-medium text-foreground text-sm">Website</h3>
-                    <a href="https://chat.novn.my.id" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                      chat.novn.my.id
+                    <a href="https://tanyapajakai.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      tanyapajakai.com
                     </a>
                   </div>
                 </div>
