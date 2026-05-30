@@ -829,7 +829,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                     <img
                       src="/kalkulator-icon.png"
                       alt="Kalkulator Pajak AI"
-                      className="h-9 w-9 object-contain"
+                      className="h-[2.925rem] w-[2.925rem] object-contain"
                     />
                     <div>
                       <h1 className="text-lg font-bold text-foreground">
