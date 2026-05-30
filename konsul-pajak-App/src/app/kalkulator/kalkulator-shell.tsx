@@ -880,7 +880,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                 </div>
 
                 {/* ── Follow-Up Questions ── */}
-                {result && result.followUpQuestions && result.followUpQuestions.length > 0 && !isGuest && (
+                {result && result.followUpQuestions && result.followUpQuestions.length > 0 && (
                   <div className="rounded-2xl border-2 border-amber-200/60 bg-gradient-to-br from-amber-50 via-orange-50/50 to-yellow-50/30 p-5 animate-in fade-in slide-in-from-bottom-3 duration-500 shadow-sm">
                     {/* Header */}
                     <div className="flex items-center gap-3 mb-3">
@@ -961,7 +961,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                     <button
                       type="button"
                       onClick={() => void handleFollowUpRecalculate()}
-                      disabled={isCalculating || Object.keys(followUpAnswers).length === 0}
+                      disabled={isCalculating || Object.keys(followUpAnswers).length === 0 || isGuest}
                       className="w-full mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 text-sm font-bold text-white shadow-md transition-all hover:from-amber-600 hover:to-orange-600 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer"
                     >
                       {isCalculating ? (
