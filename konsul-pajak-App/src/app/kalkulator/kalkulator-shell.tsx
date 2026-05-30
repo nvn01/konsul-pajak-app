@@ -827,9 +827,10 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                   {/* Title */}
                   <div className="flex items-center gap-3 mb-4">
                     <img
-                      src="/kalkulator-icon.png"
+                      src="/kalkulator-icon.webp"
                       alt="Kalkulator Pajak AI"
                       className="h-[2.925rem] w-[2.925rem] object-contain"
+                      fetchPriority="high"
                     />
                     <div>
                       <h1 className="text-lg font-bold text-foreground">
