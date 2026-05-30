@@ -54,16 +54,10 @@ export async function sendOTPEmail(email: string, code: string): Promise<void> {
                 margin-bottom: 30px;
               }
               .logo {
-                background-color: #2563eb;
-                color: white;
-                width: 64px;
-                height: 64px;
-                border-radius: 8px;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 24px;
-                font-weight: bold;
+                width: 80px;
+                height: 80px;
+                object-fit: contain;
+                border-radius: 12px;
                 margin-bottom: 20px;
               }
               h1 {
@@ -110,7 +104,7 @@ export async function sendOTPEmail(email: string, code: string): Promise<void> {
           <body>
             <div class="container">
               <div class="header">
-                <div class="logo">KP</div>
+                <img src="https://tanyapajakai.com/logo-login.png" alt="Tanya Pajak AI" class="logo" />
                 <h1>Kode Verifikasi Login</h1>
               </div>
               
