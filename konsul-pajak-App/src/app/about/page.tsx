@@ -5,7 +5,7 @@ import { useState } from "react";
 import { PublicHeader } from "@/components/public-header";
 import { BrandText } from "@/components/brand-text";
 import { useSession } from "next-auth/react";
-import { MessageCircle, Scale, BookOpen, Lock, ArrowLeft } from "lucide-react";
+import { MessageCircle, Scale, BookOpen, Calculator, ArrowLeft } from "lucide-react";
 
 export default function AboutPage() {
   const { data: session } = useSession();
@@ -30,7 +30,7 @@ export default function AboutPage() {
     },
     {
       q: "Peraturan pajak apa saja yang tersedia?",
-      a: "Database kami mencakup 40 peraturan perpajakan utama di Indonesia, termasuk UU PPh, UU PPN, UU KUP, UU Harmonisasi Peraturan Perpajakan, dan peraturan turunannya. Anda dapat menjelajahi seluruh peraturan di halaman Direktori.",
+      a: "Database kami mencakup lebih dari 3000+ peraturan perpajakan di Indonesia, termasuk UU PPh, UU PPN, UU KUP, UU Harmonisasi Peraturan Perpajakan, dan peraturan turunannya. Anda dapat menjelajahi seluruh peraturan di halaman Direktori.",
     },
     {
       q: "Apakah data percakapan saya aman?",
@@ -64,8 +64,7 @@ export default function AboutPage() {
           <div className="mx-auto max-w-4xl px-4 text-center">
             <h1 className="text-3xl md:text-4xl font-bold mb-4">Tentang Tanya Pajak AI</h1>
             <p className="text-lg text-primary-foreground/80 max-w-2xl mx-auto">
-              Asisten AI untuk konsultasi perpajakan Indonesia, didukung oleh teknologi
-              Google Vertex AI dengan grounding pada peraturan perpajakan resmi.
+              Asisten AI komprehensif yang menyediakan fitur chatbot, asisten pajak, konsultan perpajakan, dan kalkulator pajak terintegrasi AI. Didukung oleh teknologi Google Vertex AI dengan grounding pada peraturan perpajakan resmi.
             </p>
           </div>
         </section>
@@ -85,6 +84,8 @@ export default function AboutPage() {
                 Dengan memanfaatkan teknologi Retrieval-Augmented Generation (RAG) dari
                 Google Vertex AI, Tanya Pajak AI dapat memberikan jawaban yang akurat dan
                 dilengkapi dengan referensi langsung ke pasal dan ayat peraturan yang relevan.
+                Selain itu, fitur kalkulator pajak terintegrasi AI kami hadir untuk
+                mempermudah perhitungan dan simulasi pajak Anda.
               </p>
             </div>
           </section>
@@ -96,8 +97,8 @@ export default function AboutPage() {
               {[
                 { icon: <MessageCircle className="h-6 w-6" />, title: "Konsultasi AI", desc: "Tanyakan pertanyaan seputar perpajakan dan dapatkan jawaban yang komprehensif." },
                 { icon: <Scale className="h-6 w-6" />, title: "Referensi Hukum", desc: "Setiap jawaban dilengkapi dengan referensi pasal dan ayat dari peraturan resmi." },
-                { icon: <BookOpen className="h-6 w-6" />, title: "Direktori Peraturan", desc: "Jelajahi 40+ peraturan perpajakan Indonesia dalam satu tempat." },
-                { icon: <Lock className="h-6 w-6" />, title: "Privasi Terjamin", desc: "Data percakapan Anda aman dan hanya dapat diakses oleh Anda." },
+                { icon: <BookOpen className="h-6 w-6" />, title: "Direktori Peraturan", desc: "Jelajahi 3000+ peraturan perpajakan Indonesia dalam satu tempat." },
+                { icon: <Calculator className="h-6 w-6" />, title: "Kalkulator Pajak", desc: "Simulasikan dan hitung pajak dengan mudah menggunakan fitur kalkulator terintegrasi AI." },
               ].map((f, i) => (
                 <div key={i} className="rounded-xl border border-border bg-card p-5 hover:shadow-md transition-shadow group">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/5 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors mb-4">
@@ -114,7 +115,7 @@ export default function AboutPage() {
           <section>
             <h2 className="text-2xl font-bold text-foreground mb-4">Teknologi</h2>
             <div className="flex flex-wrap gap-2">
-              {["Next.js 15", "tRPC v11", "Prisma", "PostgreSQL", "Google Vertex AI", "Gemini 2.5 Pro", "NextAuth.js", "TailwindCSS", "Docker", "GitHub Actions"].map((tech) => (
+              {["Next.js 15", "tRPC v11", "Prisma", "PostgreSQL", "Google Vertex AI", "Gemini 3.5 Flash", "NextAuth.js", "TailwindCSS", "Docker", "GitHub Actions"].map((tech) => (
                 <span key={tech} className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
                   {tech}
                 </span>
