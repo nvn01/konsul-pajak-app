@@ -22,9 +22,9 @@ function getAI(): GoogleGenAI {
 }
 
 // ---------------------------------------------------------------------------
-// Model: Gemini 3.5 Flash — strongest reasoning for legal/tax accuracy
+// Model: Gemini 2.5 Pro — strongest reasoning for legal/tax accuracy
 // ---------------------------------------------------------------------------
-const MODEL_ID = "gemini-3.5-flash";
+const MODEL_ID = "gemini-2.5-pro";
 
 function getDataStoreResource(): string {
   return `projects/${env.GCP_PROJECT_ID}/locations/global/collections/default_collection/dataStores/${env.GCP_DATA_STORE_ID}`;
@@ -222,10 +222,10 @@ export async function calculateTax(
       config: {
         systemInstruction: CALCULATOR_SYSTEM_PROMPT,
         temperature: 0.1,
-        // Disable thinking config for 3.5 Flash as it can cause timeouts/loops with complex system prompts
-        // thinkingConfig: {
-        //   thinkingBudget: 4096,
-        // },
+        // Enable thinking/reasoning for deeper legal analysis
+        thinkingConfig: {
+          thinkingBudget: 4096,
+        },
         // Grounding: use Vertex AI Search data store for RAG
         tools: [
           {
@@ -283,25 +283,16 @@ function parseCalculationResult(rawText: string): TaxCalculationResult {
   };
 
   try {
+    // eslint-disable-next-line no-useless-escape
     const calcRegex = /<<<KALKULASI>>>\s*([\s\S]*?)\s*<<<END_KALKULASI>>>/;
-    let match = rawText.match(calcRegex);
-    let jsonStr = "";
+    const match = rawText.match(calcRegex);
 
-    if (match && match[1]) {
-      jsonStr = match[1].trim();
-      // Remove markdown code blocks if the model wrapped the JSON inside the markers
-      jsonStr = jsonStr.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-    } else {
-      // Fallback: try to find a JSON block directly if markers are missing
-      const fallbackMatch = rawText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-      if (fallbackMatch && fallbackMatch[1]) {
-        jsonStr = fallbackMatch[1].trim();
-      } else {
-        console.error("[Calculator] No <<<KALKULASI>>> block or JSON found in response");
-        return fallback;
-      }
+    if (!match || !match[1]) {
+      console.error("[Calculator] No <<<KALKULASI>>> block found in response");
+      return fallback;
     }
 
+    const jsonStr = match[1].trim();
     const parsed = JSON.parse(jsonStr);
 
     // Parse follow-up questions if present
@@ -310,9 +301,7 @@ function parseCalculationResult(rawText: string): TaxCalculationResult {
       const followUpRegex = /<<<FOLLOW_UP>>>\s*([\s\S]*?)\s*<<<END_FOLLOW_UP>>>/;
       const followUpMatch = rawText.match(followUpRegex);
       if (followUpMatch && followUpMatch[1]) {
-        let followUpStr = followUpMatch[1].trim();
-        followUpStr = followUpStr.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-        const followUpParsed = JSON.parse(followUpStr);
+        const followUpParsed = JSON.parse(followUpMatch[1].trim());
         if (Array.isArray(followUpParsed)) {
           followUpQuestions = followUpParsed.filter(
             (q: any) =>
