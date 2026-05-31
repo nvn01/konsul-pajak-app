@@ -18,7 +18,7 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: "Tanya Pajak AI - Asisten AI Perpajakan",
-  description: "Chatbot AI untuk konsultasi perpajakan Indonesia",
+  description: "Tanya Seputar Pajak dan Hitung Pajakmu dengan Bantuan AI",
 };
 
 export default function RootLayout({
