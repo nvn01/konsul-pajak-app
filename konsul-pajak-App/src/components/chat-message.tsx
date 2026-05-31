@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import remarkMath from "remark-math"
+import rehypeKatex from "rehype-katex"
+import "katex/dist/katex.min.css"
 import { useTypewriter } from "nvn/utils/useTypewriter"
 
 import { Button } from "@/components/ui/button"
@@ -200,7 +203,7 @@ export function ChatMessage({ message, isNew = false, hideActions = false }: Cha
           >
             {message.role === 'assistant' ? (
               <div className="prose-chat text-sm" onClick={isAnimating ? skip : undefined} style={isAnimating ? { cursor: 'pointer' } : undefined}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                   {shouldAnimate ? displayText : message.content}
                 </ReactMarkdown>
               </div>
