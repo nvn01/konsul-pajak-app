@@ -271,13 +271,34 @@ export const chatRouter = createTRPCRouter({
       const { answer, sources } = await answerTaxQuestion(trimmedMessage, messageHistory);
 
       // Augment sources with URLs from Peraturan table
+      // ── Helper: detect jenis (regulation type) from source text ──
+      function detectJenis(sourceText: string): string | null {
+        const s = sourceText.trim();
+        // Order matters: check longer/more-specific patterns first
+        if (/\b(?:Peraturan\s+Menteri\s+Keuangan|PMK)\b/i.test(s)) return 'Peraturan Menteri Keuangan';
+        if (/\b(?:Peraturan\s+Pemerintah|PP)\b/i.test(s) && !/\bPPh\b/i.test(s)) return 'Peraturan Pemerintah';
+        if (/\b(?:Peraturan\s+Presiden|Perpres)\b/i.test(s)) return 'Peraturan Presiden';
+        if (/\b(?:Surat\s+Edaran|SE)\b/i.test(s)) return 'Surat Edaran';
+        if (/\b(?:Peraturan\s+Direktur\s+Jenderal|PER)\b/i.test(s)) return 'Peraturan Direktur Jenderal';
+        if (/\b(?:Undang-undang|Undang\s+Undang|UU)\b/i.test(s)) return 'Undang-undang';
+        return null; // unknown type — don't filter
+      }
+
       const augmentedSources = await Promise.all(
         sources.map(async (src) => {
+          const detectedJenis = detectJenis(src.source);
+
+          // Build a jenis filter condition when we can determine the type
+          const jenisFilter = detectedJenis
+            ? { jenis: { contains: detectedJenis, mode: 'insensitive' as const } }
+            : {};
+
           // Strategy 1: Try exact "Nomor X TAHUN Y" pattern
           const numMatch = src.source.match(/Nomor\s+(\d+\s+TAHUN\s+\d+)/i) || src.source.match(/No\.?\s+(\d+\s+TAHUN\s+\d+)/i);
           if (numMatch && numMatch[1]) {
             const peraturan = await ctx.db.peraturan.findFirst({
               where: {
+                ...jenisFilter,
                 OR: [
                   { nomor: { contains: numMatch[1], mode: 'insensitive' } },
                   { title: { contains: numMatch[1], mode: 'insensitive' } },
@@ -298,6 +319,7 @@ export const chatRouter = createTRPCRouter({
             const searchNum = typeNumMatch[1].replace(/\s+/g, ' ').trim();
             const peraturan = await ctx.db.peraturan.findFirst({
               where: {
+                ...jenisFilter,
                 OR: [
                   { nomor: { contains: searchNum, mode: 'insensitive' } },
                   { title: { contains: searchNum, mode: 'insensitive' } },
@@ -323,6 +345,7 @@ export const chatRouter = createTRPCRouter({
               where: {
                 AND: [
                   { tahun: yearMatch[0] },
+                  jenisFilter,
                   {
                     OR: [
                       { nomor: { contains: broadNumMatch[1], mode: 'insensitive' } },
@@ -341,6 +364,7 @@ export const chatRouter = createTRPCRouter({
           // Strategy 4: Last resort — full-text search on the raw source string
           const peraturanFallback = await ctx.db.peraturan.findFirst({
             where: {
+              ...jenisFilter,
               OR: [
                 { title: { contains: src.source.substring(0, 80), mode: 'insensitive' } },
                 { deskripsi: { contains: src.source.substring(0, 80), mode: 'insensitive' } },
