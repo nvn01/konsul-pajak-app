@@ -68,6 +68,8 @@ const adminMiddleware = t.middleware(async ({ ctx, next }) => {
     if (parts.length !== 4 || parts[0] !== "admin") throw new Error();
 
     const [prefix, idStr, timestampStr, signature] = parts;
+    if (!prefix || !idStr || !timestampStr || !signature) throw new Error();
+
     const payload = `${prefix}:${idStr}:${timestampStr}`;
     const expected = crypto.createHmac("sha256", getSecret()).update(payload).digest("hex");
 
@@ -79,7 +81,7 @@ const adminMiddleware = t.middleware(async ({ ctx, next }) => {
     const tokenAge = Date.now() - parseInt(timestampStr);
     if (isNaN(tokenAge) || tokenAge > 24 * 60 * 60 * 1000) throw new Error();
 
-    const admin = await ctx.db.admin.findUnique({ where: { id: parseInt(idStr!) } });
+    const admin = await ctx.db.admin.findUnique({ where: { id: parseInt(idStr) } });
     if (!admin) throw new Error();
 
     return next({ ctx: { ...ctx, admin } });
@@ -123,21 +125,37 @@ export const adminRouter = createTRPCRouter({
       const isHttps = protocol === "https" || ctx.headers.get("referer")?.startsWith("https://");
 
       // Set secure HTTP-only cookie server-side
-      const cookieStore = await cookies();
-      cookieStore.set(COOKIE_NAME, token, {
-        path: "/",
-        maxAge: 86400,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production" && isHttps,
-        sameSite: "lax",
+      ctx.setCookies.push({
+        name: COOKIE_NAME,
+        value: token,
+        options: {
+          path: "/",
+          maxAge: 86400,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production" && isHttps,
+          sameSite: "lax",
+        },
       });
 
       return { success: true };
     }),
 
-  logout: publicProcedure.mutation(async () => {
-    const cookieStore = await cookies();
-    cookieStore.delete(COOKIE_NAME);
+  logout: publicProcedure.mutation(async ({ ctx }) => {
+    const protocol = ctx.headers.get("x-forwarded-proto") ?? "http";
+    const isHttps = protocol === "https" || ctx.headers.get("referer")?.startsWith("https://");
+
+    ctx.setCookies.push({
+      name: COOKIE_NAME,
+      value: "",
+      options: {
+        path: "/",
+        maxAge: 0,
+        expires: new Date(0),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production" && isHttps,
+        sameSite: "lax",
+      },
+    });
     return { success: true };
   }),
 
