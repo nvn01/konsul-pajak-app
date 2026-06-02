@@ -16,7 +16,7 @@ export default function AdminLoginPage() {
 
   const loginMutation = api.admin.login.useMutation({
     onSuccess: () => {
-      router.push('/admin/dashboard')
+      window.location.href = '/admin/dashboard'
     },
     onError: (err) => {
       setError(err.message || 'Login gagal.')
