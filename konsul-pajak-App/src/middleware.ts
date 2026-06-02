@@ -20,8 +20,11 @@ export function middleware(request: NextRequest) {
 
   // Protect /admin routes (except /admin/login)
   if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
-    // Temporarily bypass middleware redirect to allow direct loading
-    return NextResponse.next();
+    const hasAdminSession = request.cookies.has("admin_session");
+    
+    if (!hasAdminSession) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
   }
 
   return NextResponse.next();
