@@ -39,30 +39,11 @@ const handler = async (req: NextRequest) => {
   });
 
   if (setCookies.length > 0) {
-    const newResponse = new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: new Headers(response.headers),
-    });
-    
+    const { cookies: nextCookies } = await import("next/headers");
+    const cookieStore = await nextCookies();
     for (const cookie of setCookies) {
-      const cookieParts = [`${encodeURIComponent(cookie.name)}=${encodeURIComponent(cookie.value)}`];
-      if (cookie.options) {
-        const opt = cookie.options;
-        if (opt.maxAge !== undefined) cookieParts.push(`Max-Age=${opt.maxAge}`);
-        if (opt.domain) cookieParts.push(`Domain=${opt.domain}`);
-        if (opt.path) cookieParts.push(`Path=${opt.path}`);
-        if (opt.expires) {
-          const exp = opt.expires instanceof Date ? opt.expires.toUTCString() : opt.expires;
-          cookieParts.push(`Expires=${exp}`);
-        }
-        if (opt.httpOnly) cookieParts.push("HttpOnly");
-        if (opt.secure) cookieParts.push("Secure");
-        if (opt.sameSite) cookieParts.push(`SameSite=${opt.sameSite}`);
-      }
-      newResponse.headers.append("Set-Cookie", cookieParts.join("; "));
+      cookieStore.set(cookie.name, cookie.value, cookie.options);
     }
-    return newResponse;
   }
 
   return response;
