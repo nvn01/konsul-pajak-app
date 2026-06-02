@@ -5,8 +5,8 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   console.log(`[Middleware] Path: ${pathname}, Cookies:`, request.cookies.getAll().map(c => c.name));
 
-  // Protect /chat routes
-  if (pathname.startsWith("/chat")) {
+  // Allow the base chat page to render guest mode. Saved chat URLs remain protected.
+  if (pathname.startsWith("/chat/")) {
     const hasSession = 
       request.cookies.has("next-auth.session-token") || 
       request.cookies.has("__Secure-next-auth.session-token") ||
