@@ -4,7 +4,7 @@ import { useState } from "react"
 import { api } from "nvn/trpc/react"
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
-import { LogOut, Info, Phone, MessageCircle, BookOpen, Calculator, Sparkles, Coins } from "lucide-react"
+import { LogOut, Info, Phone, MessageCircle, BookOpen, Calculator, Sparkles } from "lucide-react"
 
 import { PublicHeader } from "@/components/public-header"
 import { BrandText } from "@/components/brand-text"
@@ -173,12 +173,13 @@ export default function DirektoriPage() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer font-semibold text-sidebar-primary focus:text-sidebar-primary focus:bg-sidebar-primary/5" asChild>
+              {/* Hidden for now: pricing/credit purchase entry point is temporarily disabled. */}
+              {/* <DropdownMenuItem className="cursor-pointer font-semibold text-sidebar-primary focus:text-sidebar-primary focus:bg-sidebar-primary/5" asChild>
                 <Link href="/pricing">
                   <Coins className="mr-2 h-4 w-4" />
                   <span>Beli Kredit</span>
                 </Link>
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuItem className="cursor-pointer" asChild>
                 <Link href="/about">
                   <Info className="mr-2 h-4 w-4" />
