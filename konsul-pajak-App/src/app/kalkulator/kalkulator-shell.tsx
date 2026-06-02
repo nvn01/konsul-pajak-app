@@ -469,7 +469,13 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
         error?.message?.includes?.("Kredit") ||
         error?.data?.code === "FORBIDDEN"
       ) {
-        setShowCreditsExhausted(true);
+        if (isGuest) {
+          setGuestCalculated(true);
+          localStorage.setItem("kp_guest_calc", "1");
+          setShowSignupPrompt(true);
+        } else {
+          setShowCreditsExhausted(true);
+        }
       }
     }
   };

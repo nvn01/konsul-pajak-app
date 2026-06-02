@@ -124,11 +124,36 @@ export const chatRouter = createTRPCRouter({
         message: z.string().min(1, 'Pesan tidak boleh kosong').max(2000, 'Pesan terlalu panjang'),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const trimmedMessage = input.message.trim();
+      const ipAddress = ctx.ip ?? '127.0.0.1';
+
+      // Load quota config and check guest message limit by IP address
+      const quotaConfig = await getQuotaConfig(ctx.db);
+      const usageCount = await ctx.db.guestUsage.count({
+        where: {
+          ip: ipAddress,
+          actionType: 'chat',
+        },
+      });
+
+      if (usageCount >= quotaConfig.guestMessageLimit) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Batas konsultasi gratis untuk tamu telah habis. Silakan masuk untuk melanjutkan.',
+        });
+      }
 
       // Call AI without any history (single-turn)
       const { answer, sources } = await answerTaxQuestion(trimmedMessage, []);
+
+      // Record guest usage in DB
+      await ctx.db.guestUsage.create({
+        data: {
+          ip: ipAddress,
+          actionType: 'chat',
+        },
+      });
 
       return {
         answer,

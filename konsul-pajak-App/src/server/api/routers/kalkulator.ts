@@ -29,8 +29,34 @@ export const kalkulatorRouter = createTRPCRouter({
           .max(3000, 'Deskripsi terlalu panjang'),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const ipAddress = ctx.ip ?? '127.0.0.1';
+
+      // Load quota config and check guest calculation limit by IP address
+      const quotaConfig = await getQuotaConfig(ctx.db);
+      const usageCount = await ctx.db.guestUsage.count({
+        where: {
+          ip: ipAddress,
+          actionType: 'calculation',
+        },
+      });
+
+      if (usageCount >= quotaConfig.guestMessageLimit) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Batas penggunaan kalkulator untuk tamu telah habis. Silakan masuk untuk melanjutkan.',
+        });
+      }
+
       const result = await calculateTax(input.description.trim());
+
+      // Record guest usage in DB
+      await ctx.db.guestUsage.create({
+        data: {
+          ip: ipAddress,
+          actionType: 'calculation',
+        },
+      });
 
       // Guest: no DB save, no source augmentation (no DB context)
       return result;

@@ -256,9 +256,15 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
 
     } catch (error: any) {
       console.error("[Chat] Failed to send message", error);
-      // Show credits exhausted if that's the error
+      // Show credits exhausted or signup prompt if that's the error
       if (error?.message?.includes?.("Kredit") || error?.data?.code === "FORBIDDEN") {
-        setShowCreditsExhausted(true);
+        if (isGuest) {
+          setGuestMessageSent(true);
+          localStorage.setItem("kp_guest_sent", "1");
+          setShowSignupPrompt(true);
+        } else {
+          setShowCreditsExhausted(true);
+        }
       }
       setMessage(text);
       setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));

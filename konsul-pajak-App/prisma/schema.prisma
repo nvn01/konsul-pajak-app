@@ -171,3 +171,14 @@ model Calculation {
 
   @@index([userId])
 }
+
+// 5. Model Tracking Usage Guest (mencegah bypass incognito)
+// ==================================================
+model GuestUsage {
+  id         String   @id @default(uuid())
+  ip         String
+  actionType String   // "chat" or "calculation"
+  createdAt  DateTime @default(now())
+
+  @@index([ip, actionType])
+}
