@@ -16,7 +16,7 @@ function generateToken(adminId: number): string {
   return Buffer.from(`admin:${adminId}:${Date.now()}`).toString("base64");
 }
 
-const COOKIE_NAME = "admin_session";
+const COOKIE_NAME = process.env.NODE_ENV === "production" ? "__Secure-admin_session" : "admin_session";
 
 // Admin middleware — checks cookie
 const adminMiddleware = t.middleware(async ({ ctx, next }) => {

@@ -20,7 +20,9 @@ export function middleware(request: NextRequest) {
 
   // Protect /admin routes (except /admin/login)
   if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
-    const hasAdminSession = request.cookies.has("admin_session");
+    const hasAdminSession = 
+      request.cookies.has("__Secure-admin_session") || 
+      request.cookies.has("admin_session");
     
     if (!hasAdminSession) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
