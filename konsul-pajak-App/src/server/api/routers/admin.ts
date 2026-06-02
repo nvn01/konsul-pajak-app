@@ -3,25 +3,16 @@ import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { createTRPCRouter, publicProcedure, t } from "nvn/server/api/trpc";
-import crypto from "crypto";
-
-function getSecret(): string {
-  if (!process.env.NEXTAUTH_SECRET) {
-    throw new Error("NEXTAUTH_SECRET environment variable is not set");
-  }
-  return process.env.NEXTAUTH_SECRET;
-}
-
-function generateToken(adminId: number): string {
-  return Buffer.from(`admin:${adminId}:${Date.now()}`).toString("base64");
-}
-
-const COOKIE_NAME = process.env.NODE_ENV === "production" ? "__Secure-admin_session" : "admin_session";
+import {
+  ADMIN_COOKIE_NAME,
+  ADMIN_COOKIE_OPTIONS,
+  generateAdminToken,
+} from "nvn/server/admin-auth";
 
 // Admin middleware — checks cookie
 const adminMiddleware = t.middleware(async ({ ctx, next }) => {
   const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
 
   if (!token) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Silakan login terlebih dahulu." });
@@ -61,19 +52,13 @@ export const adminRouter = createTRPCRouter({
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Username atau password salah." });
       }
 
-      const token = generateToken(admin.id);
+      const token = generateAdminToken(admin.id);
 
       // Set secure HTTP-only cookie server-side
       ctx.setCookies.push({
-        name: COOKIE_NAME,
+        name: ADMIN_COOKIE_NAME,
         value: token,
-        options: {
-          path: "/",
-          maxAge: 86400,
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-        },
+        options: ADMIN_COOKIE_OPTIONS,
       });
 
       return { success: true };
@@ -81,15 +66,12 @@ export const adminRouter = createTRPCRouter({
 
   logout: publicProcedure.mutation(async ({ ctx }) => {
     ctx.setCookies.push({
-      name: COOKIE_NAME,
+      name: ADMIN_COOKIE_NAME,
       value: "",
       options: {
-        path: "/",
+        ...ADMIN_COOKIE_OPTIONS,
         maxAge: 0,
         expires: new Date(0),
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
       },
     });
     return { success: true };
