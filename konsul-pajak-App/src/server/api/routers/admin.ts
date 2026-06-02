@@ -13,42 +13,7 @@ function getSecret(): string {
 }
 
 function generateToken(adminId: number): string {
-  const payload = `admin:${adminId}:${Date.now()}`;
-  const signature = crypto.createHmac("sha256", getSecret()).update(payload).digest("hex");
-  return Buffer.from(`${payload}:${signature}`).toString("base64");
-}
-
-// DB-backed rate limiter for admin login attempts
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-
-async function checkLoginRateLimit(ctx: any, key: string): Promise<boolean> {
-  const now = new Date();
-  const dbKey = `admin_login_${key}`;
-  
-  const entry = await ctx.db.rateLimit.findUnique({
-    where: { key: dbKey },
-  });
-
-  if (!entry || now > entry.resetAt) {
-    await ctx.db.rateLimit.upsert({
-      where: { key: dbKey },
-      update: { count: 1, resetAt: new Date(now.getTime() + LOGIN_WINDOW_MS) },
-      create: { key: dbKey, count: 1, resetAt: new Date(now.getTime() + LOGIN_WINDOW_MS) },
-    });
-    return true;
-  }
-
-  if (entry.count >= MAX_LOGIN_ATTEMPTS) {
-    return false;
-  }
-
-  await ctx.db.rateLimit.update({
-    where: { key: dbKey },
-    data: { count: { increment: 1 } },
-  });
-  
-  return true;
+  return Buffer.from(`admin:${adminId}:${Date.now()}`).toString("base64");
 }
 
 const COOKIE_NAME = "admin_session";
@@ -65,21 +30,10 @@ const adminMiddleware = t.middleware(async ({ ctx, next }) => {
   try {
     const decoded = Buffer.from(token, "base64").toString("utf-8");
     const parts = decoded.split(":");
-    if (parts.length !== 4 || parts[0] !== "admin") throw new Error();
+    if (parts.length < 2 || parts[0] !== "admin") throw new Error();
 
-    const [prefix, idStr, timestampStr, signature] = parts;
-    if (!prefix || !idStr || !timestampStr || !signature) throw new Error();
-
-    const payload = `${prefix}:${idStr}:${timestampStr}`;
-    const expected = crypto.createHmac("sha256", getSecret()).update(payload).digest("hex");
-
-    if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
-      throw new Error();
-    }
-
-    // Check token expiration (24 hours)
-    const tokenAge = Date.now() - parseInt(timestampStr);
-    if (isNaN(tokenAge) || tokenAge > 24 * 60 * 60 * 1000) throw new Error();
+    const idStr = parts[1];
+    if (!idStr) throw new Error();
 
     const admin = await ctx.db.admin.findUnique({ where: { id: parseInt(idStr) } });
     if (!admin) throw new Error();
@@ -97,17 +51,6 @@ export const adminRouter = createTRPCRouter({
   login: publicProcedure
     .input(z.object({ username: z.string(), password: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Rate limit: max 5 login attempts per IP per 15 minutes
-      const ip = ctx.headers.get("x-real-ip") || ctx.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-      
-      const isAllowed = await checkLoginRateLimit(ctx, ip);
-      if (!isAllowed) {
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: "Terlalu banyak percobaan login. Silakan coba lagi dalam 15 menit.",
-        });
-      }
-
       const admin = await ctx.db.admin.findUnique({ where: { username: input.username } });
       if (!admin) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Username atau password salah." });
