@@ -53,17 +53,10 @@ async function checkLoginRateLimit(ctx: any, key: string): Promise<boolean> {
 
 const COOKIE_NAME = "admin_session";
 
-// Parse a specific cookie from the raw Cookie header string
-function parseCookie(cookieHeader: string | null, name: string): string | undefined {
-  if (!cookieHeader) return undefined;
-  const match = cookieHeader.split(";").find((c) => c.trim().startsWith(`${name}=`));
-  return match ? match.split("=").slice(1).join("=").trim() : undefined;
-}
-
-// Admin middleware — checks cookie from request headers
+// Admin middleware — checks cookie
 const adminMiddleware = t.middleware(async ({ ctx, next }) => {
-  const cookieHeader = ctx.headers.get("cookie");
-  const token = parseCookie(cookieHeader, COOKIE_NAME);
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
 
   if (!token) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Silakan login terlebih dahulu." });
