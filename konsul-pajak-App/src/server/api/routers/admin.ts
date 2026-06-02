@@ -125,13 +125,17 @@ export const adminRouter = createTRPCRouter({
 
       const token = generateToken(admin.id);
 
+      // Check protocol to determine if we can set Secure cookie
+      const protocol = ctx.headers.get("x-forwarded-proto") ?? "http";
+      const isHttps = protocol === "https" || ctx.headers.get("referer")?.startsWith("https://");
+
       // Set secure HTTP-only cookie server-side
       const cookieStore = await cookies();
       cookieStore.set(COOKIE_NAME, token, {
         path: "/",
         maxAge: 86400,
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: process.env.NODE_ENV === "production" && isHttps,
         sameSite: "lax",
       });
 
