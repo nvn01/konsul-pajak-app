@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  console.log(`[Middleware] Path: ${pathname}, Cookies:`, request.cookies.getAll().map(c => c.name));
 
   // Protect /chat routes
   if (pathname.startsWith("/chat")) {

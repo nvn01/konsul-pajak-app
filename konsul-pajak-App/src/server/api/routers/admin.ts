@@ -63,10 +63,6 @@ export const adminRouter = createTRPCRouter({
 
       const token = generateToken(admin.id);
 
-      // Check protocol to determine if we can set Secure cookie
-      const protocol = ctx.headers.get("x-forwarded-proto") ?? "http";
-      const isHttps = protocol === "https" || ctx.headers.get("referer")?.startsWith("https://");
-
       // Set secure HTTP-only cookie server-side
       ctx.setCookies.push({
         name: COOKIE_NAME,
@@ -75,7 +71,7 @@ export const adminRouter = createTRPCRouter({
           path: "/",
           maxAge: 86400,
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production" && isHttps,
+          secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
         },
       });
@@ -84,9 +80,6 @@ export const adminRouter = createTRPCRouter({
     }),
 
   logout: publicProcedure.mutation(async ({ ctx }) => {
-    const protocol = ctx.headers.get("x-forwarded-proto") ?? "http";
-    const isHttps = protocol === "https" || ctx.headers.get("referer")?.startsWith("https://");
-
     ctx.setCookies.push({
       name: COOKIE_NAME,
       value: "",
@@ -95,7 +88,7 @@ export const adminRouter = createTRPCRouter({
         maxAge: 0,
         expires: new Date(0),
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production" && isHttps,
+        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
       },
     });
