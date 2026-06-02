@@ -6,7 +6,10 @@ import { createTRPCRouter, publicProcedure, t } from "nvn/server/api/trpc";
 import crypto from "crypto";
 
 function getSecret(): string {
-  return process.env.NEXTAUTH_SECRET || "fallback-secret-change-me";
+  if (!process.env.NEXTAUTH_SECRET) {
+    throw new Error("NEXTAUTH_SECRET environment variable is not set");
+  }
+  return process.env.NEXTAUTH_SECRET;
 }
 
 function generateToken(adminId: number): string {
@@ -15,22 +18,36 @@ function generateToken(adminId: number): string {
   return Buffer.from(`${payload}:${signature}`).toString("base64");
 }
 
-// In-memory rate limiter for admin login attempts
-const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+// DB-backed rate limiter for admin login attempts
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
-function checkLoginRateLimit(key: string): boolean {
-  const now = Date.now();
-  const entry = loginAttempts.get(key);
+async function checkLoginRateLimit(ctx: any, key: string): Promise<boolean> {
+  const now = new Date();
+  const dbKey = `admin_login_${key}`;
+  
+  const entry = await ctx.db.rateLimit.findUnique({
+    where: { key: dbKey },
+  });
+
   if (!entry || now > entry.resetAt) {
-    loginAttempts.set(key, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+    await ctx.db.rateLimit.upsert({
+      where: { key: dbKey },
+      update: { count: 1, resetAt: new Date(now.getTime() + LOGIN_WINDOW_MS) },
+      create: { key: dbKey, count: 1, resetAt: new Date(now.getTime() + LOGIN_WINDOW_MS) },
+    });
     return true;
   }
+
   if (entry.count >= MAX_LOGIN_ATTEMPTS) {
     return false;
   }
-  entry.count++;
+
+  await ctx.db.rateLimit.update({
+    where: { key: dbKey },
+    data: { count: { increment: 1 } },
+  });
+  
   return true;
 }
 
@@ -86,8 +103,10 @@ export const adminRouter = createTRPCRouter({
     .input(z.object({ username: z.string(), password: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // Rate limit: max 5 login attempts per IP per 15 minutes
-      const ip = ctx.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-      if (!checkLoginRateLimit(ip)) {
+      const ip = ctx.headers.get("x-real-ip") || ctx.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      
+      const isAllowed = await checkLoginRateLimit(ctx, ip);
+      if (!isAllowed) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
           message: "Terlalu banyak percobaan login. Silakan coba lagi dalam 15 menit.",
@@ -444,7 +463,7 @@ export const adminRouter = createTRPCRouter({
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const config = await ctx.db.quotaConfig.findFirst({ where: { id: 1 } });
-      const defaultCredits = config?.defaultCredits ?? 100;
+      const defaultCredits = config?.defaultCredits ?? 20;
 
       return ctx.db.user.update({
         where: { id: input.userId },

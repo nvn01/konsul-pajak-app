@@ -11,7 +11,7 @@ import { createTRPCRouter, protectedProcedure, publicProcedure } from 'nvn/serve
 async function getQuotaConfig(db: any) {
   const config = await db.quotaConfig.findFirst({ where: { id: 1 } });
   return {
-    defaultCredits: config?.defaultCredits ?? 100,
+    defaultCredits: config?.defaultCredits ?? 20,
     guestMessageLimit: config?.guestMessageLimit ?? 1,
     spamTimeWindowSec: config?.spamTimeWindowSec ?? 30,
     minMessageLength: config?.minMessageLength ?? 10,

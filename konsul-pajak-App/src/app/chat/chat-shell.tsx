@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, Menu, X, Send, Loader2, ClipboardList, History, MessageCircle, Info, Phone, Layers, Calculator, BookOpen } from "lucide-react";
+import { LogOut, Menu, X, Send, Loader2, ClipboardList, History, MessageCircle, Info, Phone, Layers, Calculator, BookOpen, Coins } from "lucide-react";
 
 import { ChatMessage } from "@/components/chat-message";
 import { PublicHeader } from "@/components/public-header";
@@ -500,16 +500,27 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
+                <div className="flex flex-col space-y-1.5">
                   <p className="text-sm font-medium leading-none">
                     {session?.user?.name}
                   </p>
                   <p className="text-muted-foreground text-xs leading-none">
                     {session?.user?.email}
                   </p>
+                  {creditsQuery.data && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-sidebar-primary bg-sidebar-primary/10 px-2.5 py-1 rounded w-fit font-semibold">
+                      <span>Sisa Kredit: {creditsQuery.data.credits} pesan</span>
+                    </div>
+                  )}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer font-semibold text-sidebar-primary focus:text-sidebar-primary focus:bg-sidebar-primary/5" asChild>
+                <Link href="/pricing">
+                  <Coins className="mr-2 h-4 w-4" />
+                  <span>Beli Kredit</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer" asChild>
                 <Link href="/about">
                   <Info className="mr-2 h-4 w-4" />

@@ -148,32 +148,16 @@ export default function LoginPage() {
     setSuccessMessage(""); // Clear success message when verifying
 
     try {
-      const response = await fetch("/api/auth/verify-otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, code: otpCode }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || "Kode verifikasi salah");
-        setIsLoading(false);
-        // Reset OTP input to allow user to try again
-        otpInputRef.current?.reset();
-        return;
-      }
-
-      // Sign in with NextAuth using credentials
+      // Sign in with NextAuth using credentials, passing both email and code
       const result = await signIn("credentials", {
         email: email,
+        code: otpCode,
         redirect: false,
       });
 
       if (result?.error) {
-        setError("Gagal membuat sesi. Silakan coba lagi.");
+        // NextAuth returns generic 'CredentialsSignin' error string by default
+        setError("Kode verifikasi salah atau telah kedaluwarsa.");
         setIsLoading(false);
         // Reset OTP input on session creation error
         otpInputRef.current?.reset();

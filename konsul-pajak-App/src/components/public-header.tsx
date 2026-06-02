@@ -49,6 +49,13 @@ export function PublicHeader() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
           <Link
+            href="/pricing"
+            className="text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground transition-colors"
+          >
+            Daftar Harga
+          </Link>
+
+          <Link
             href="/about"
             className="text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground transition-colors"
           >
@@ -159,6 +166,13 @@ export function PublicHeader() {
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <nav className="md:hidden mt-4 pt-4 border-t border-primary-foreground/10 space-y-1">
+          <Link
+            href="/pricing"
+            className="block px-3 py-2 rounded-lg text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            Daftar Harga
+          </Link>
           <Link
             href="/about"
             className="block px-3 py-2 rounded-lg text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors"

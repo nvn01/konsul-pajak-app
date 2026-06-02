@@ -4,7 +4,7 @@ import { useState } from "react"
 import { api } from "nvn/trpc/react"
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
-import { LogOut, Info, Phone, MessageCircle, BookOpen, Calculator, Sparkles } from "lucide-react"
+import { LogOut, Info, Phone, MessageCircle, BookOpen, Calculator, Sparkles, Coins } from "lucide-react"
 
 import { PublicHeader } from "@/components/public-header"
 import { BrandText } from "@/components/brand-text"
@@ -21,6 +21,9 @@ import {
 
 export default function DirektoriPage() {
   const { data: session } = useSession()
+  const creditsQuery = api.chat.getCredits.useQuery(undefined, {
+    enabled: !!session,
+  })
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
   const [filterJenis, setFilterJenis] = useState("")
@@ -155,16 +158,27 @@ export default function DirektoriPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
+                <div className="flex flex-col space-y-1.5">
                   <p className="text-sm font-medium leading-none">
                     {session?.user?.name}
                   </p>
                   <p className="text-muted-foreground text-xs leading-none">
                     {session?.user?.email}
                   </p>
+                  {creditsQuery.data && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-sidebar-primary bg-sidebar-primary/10 px-2.5 py-1 rounded w-fit font-semibold">
+                      <span>Sisa Kredit: {creditsQuery.data.credits} pesan</span>
+                    </div>
+                  )}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer font-semibold text-sidebar-primary focus:text-sidebar-primary focus:bg-sidebar-primary/5" asChild>
+                <Link href="/pricing">
+                  <Coins className="mr-2 h-4 w-4" />
+                  <span>Beli Kredit</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer" asChild>
                 <Link href="/about">
                   <Info className="mr-2 h-4 w-4" />

@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { DefaultSession, NextAuthConfig } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { verifyOTP } from "nvn/lib/otp";
 
 import { db } from "../db";
 import { env } from "../../env";
@@ -39,33 +40,72 @@ export const authConfig: NextAuthConfig = {
       name: "Email OTP",
       credentials: {
         email: { label: "Email", type: "email" },
+        code: { label: "Code", type: "text" },
       },
       async authorize(credentials) {
-        if (!credentials?.email) {
+        if (!credentials?.email || !credentials?.code) {
           return null;
         }
 
         const email = credentials.email as string;
+        const code = credentials.code as string;
 
-        // Find user by email
-        const user = await db.user.findUnique({
+        // Find tokens for this email
+        const tokens = await db.verificationToken.findMany({
+          where: { identifier: email },
+        });
+
+        if (tokens.length === 0) {
+          return null; // No tokens found
+        }
+
+        let verified = false;
+        let validToken = null;
+
+        for (const token of tokens) {
+          if (new Date() > token.expires) continue;
+
+          const isValid = await verifyOTP(code, token.token);
+          if (isValid) {
+            verified = true;
+            validToken = token;
+            break;
+          }
+        }
+
+        if (!verified) {
+          return null; // Invalid code
+        }
+
+        // Delete the used token
+        if (validToken) {
+          await db.verificationToken.delete({
+            where: {
+              identifier_token: {
+                identifier: validToken.identifier,
+                token: validToken.token,
+              },
+            },
+          });
+        }
+
+        // Find or create user
+        let user = await db.user.findUnique({
           where: { email },
         });
 
         if (!user) {
-          return null;
-        }
-
-        // Verify that OTP was actually completed recently (within 10 minutes)
-        // The verify-otp endpoint sets emailVerified to new Date() upon successful verification
-        if (!user.emailVerified) {
-          return null;
-        }
-
-        const verifiedAge = Date.now() - new Date(user.emailVerified).getTime();
-        const TEN_MINUTES = 10 * 60 * 1000;
-        if (verifiedAge > TEN_MINUTES) {
-          return null;
+          user = await db.user.create({
+            data: {
+              email,
+              emailVerified: new Date(),
+            },
+          });
+        } else {
+          user = await db.user.update({
+            where: { email },
+            data: { emailVerified: new Date() },
+          });
         }
 
         // Return user object for session

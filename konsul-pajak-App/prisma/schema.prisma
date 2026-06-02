@@ -26,7 +26,7 @@ model User {
   reports       Report[]
   calculations  Calculation[]
   // --- Sistem Kuota/Kredit ---
-  credits           Int       @default(100)    // Sisa kredit pesan
+  credits           Int       @default(20)    // Sisa kredit pesan
   creditCostPerMsg  Int       @default(1)      // Biaya per pesan (bisa naik jika spam)
   isFlagged         Boolean   @default(false)  // Flag admin untuk user yang menyalahgunakan
   lastMessageAt     DateTime?                  // Untuk deteksi spam (waktu pesan terakhir)
@@ -148,7 +148,7 @@ model Peraturan {
 // ==================================================
 model QuotaConfig {
   id                    Int    @id @default(1)  // Selalu ID 1 (singleton)
-  defaultCredits        Int    @default(100)    // Kredit default untuk user baru
+  defaultCredits        Int    @default(20)    // Kredit default untuk user baru
   guestMessageLimit     Int    @default(1)      // Batas pesan untuk guest
   spamTimeWindowSec     Int    @default(30)     // Pesan dalam waktu ini = spam
   minMessageLength      Int    @default(10)     // Pesan lebih pendek dari ini = spam
@@ -181,4 +181,12 @@ model GuestUsage {
   createdAt  DateTime @default(now())
 
   @@index([ip, actionType])
+}
+
+// 6. Model Rate Limiting (Mencegah brute force dan spam)
+// ==================================================
+model RateLimit {
+  key       String   @id
+  count     Int      @default(1)
+  resetAt   DateTime
 }

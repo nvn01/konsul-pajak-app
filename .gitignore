@@ -140,3 +140,6 @@ coverage.xml
 # Reference folder
 # ═══════════════════════════════════════════
 reference/
+# Environment variables
+.env
+.env.*
