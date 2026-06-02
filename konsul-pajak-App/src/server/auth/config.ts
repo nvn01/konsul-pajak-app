@@ -45,12 +45,26 @@ export const authConfig: NextAuthConfig = {
           return null;
         }
 
+        const email = credentials.email as string;
+
         // Find user by email
         const user = await db.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
         });
 
         if (!user) {
+          return null;
+        }
+
+        // Verify that OTP was actually completed recently (within 10 minutes)
+        // The verify-otp endpoint sets emailVerified to new Date() upon successful verification
+        if (!user.emailVerified) {
+          return null;
+        }
+
+        const verifiedAge = Date.now() - new Date(user.emailVerified).getTime();
+        const TEN_MINUTES = 10 * 60 * 1000;
+        if (verifiedAge > TEN_MINUTES) {
           return null;
         }
 

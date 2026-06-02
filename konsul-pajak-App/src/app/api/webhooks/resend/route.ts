@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
+// Escape HTML special characters to prevent XSS in email templates
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export async function POST(req: NextRequest) {
   try {
     const payload = await req.text();
@@ -54,9 +64,14 @@ export async function POST(req: NextRequest) {
         );
       }
     } else {
-      console.warn(
-        "RESEND_WEBHOOK_SECRET is not set. Webhook signature verification skipped. " +
-          "Please configure RESEND_WEBHOOK_SECRET in production environments for secure routing.",
+      // In production, reject requests if webhook secret is not configured
+      console.error(
+        "RESEND_WEBHOOK_SECRET is not set. Rejecting webhook request. " +
+          "Please configure RESEND_WEBHOOK_SECRET for secure webhook verification.",
+      );
+      return NextResponse.json(
+        { error: "Webhook verification not configured" },
+        { status: 500 },
       );
     }
 
@@ -83,7 +98,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      console.log(`Processing inbound email ID: ${emailId}`);
+      // Processing inbound email
 
       // Fetch the complete received email via Resend's Inbound Get API
       const { data: originalEmail, error: fetchError } =
@@ -116,11 +131,13 @@ export async function POST(req: NextRequest) {
 
       // Format sender details
       const subject = `[Inbound] ${originalEmail.subject || "(No Subject)"}`;
-      const fromName =
+      const rawFromName =
         originalEmail.from.split("<")[0]?.trim() || originalEmail.from;
-      const fromEmail = originalEmail.from.includes("<")
+      const rawFromEmail = originalEmail.from.includes("<")
         ? originalEmail.from.match(/<([^>]+)>/)?.[1]
         : originalEmail.from;
+      const fromName = escapeHtml(rawFromName);
+      const fromEmail = escapeHtml(rawFromEmail || rawFromName);
 
       const receivedDateStr = originalEmail.created_at
         ? new Date(originalEmail.created_at).toLocaleString("id-ID", {
@@ -250,12 +267,12 @@ export async function POST(req: NextRequest) {
               <div class="meta-box">
                 <div class="meta-item">
                   <span class="meta-label">Pengirim:</span>
-                  <span class="meta-value"><strong>${fromName}</strong> &lt;${fromEmail}&gt;</span>
+                  <span class="meta-value"><strong>${fromName}</strong> &lt;${fromEmail}&gt;</span><!-- fromName/fromEmail already escaped -->
                 </div>
                 <div style="margin-top: 6px;">
                   <div class="meta-item">
                     <span class="meta-label">Penerima:</span>
-                    <span class="meta-value">${originalEmail.to.join(", ")}</span>
+                    <span class="meta-value">${escapeHtml(originalEmail.to.join(", "))}</span>
                   </div>
                   <div class="meta-item" style="margin-top: 6px;">
                     <span class="meta-label">Tanggal:</span>
@@ -263,7 +280,7 @@ export async function POST(req: NextRequest) {
                   </div>
                   <div class="meta-item" style="margin-top: 6px;">
                     <span class="meta-label">Subjek:</span>
-                    <span class="meta-value"><strong>${originalEmail.subject || "(No Subject)"}</strong></span>
+                    <span class="meta-value"><strong>${escapeHtml(originalEmail.subject || "(No Subject)")}</strong></span>
                   </div>
                 </div>
               </div>
@@ -332,11 +349,9 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      console.log(
-        `Inbound email forwarded successfully. Message ID: ${sendData?.id}`,
-      );
+      // Email forwarded successfully
     } else {
-      console.log(`Received unhandled webhook event: ${body.type}`);
+      // Unhandled webhook event type
     }
 
     // Always acknowledge receipt of webhook with a 200 OK

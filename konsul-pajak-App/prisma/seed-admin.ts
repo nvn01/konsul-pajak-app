@@ -4,8 +4,11 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  const username = "221011400778";
-  const password = "unpam2026";
+  const username = process.env.ADMIN_USERNAME;
+  const password = process.env.ADMIN_PASSWORD;
+  if (!username || !password) {
+    throw new Error("ADMIN_USERNAME and ADMIN_PASSWORD environment variables are required for seeding.");
+  }
   const hash = await bcrypt.hash(password, 10);
 
   await prisma.admin.upsert({

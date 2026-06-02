@@ -4,6 +4,25 @@ import { db } from "nvn/server/db";
 import { generateOTP, hashOTP, getOTPExpiration } from "nvn/lib/otp";
 import { sendOTPEmail } from "nvn/lib/email";
 
+// Simple in-memory rate limiter for OTP sends
+const otpSendAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_OTP_SENDS = 3;
+const OTP_SEND_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
+function checkOTPRateLimit(key: string): boolean {
+    const now = Date.now();
+    const entry = otpSendAttempts.get(key);
+    if (!entry || now > entry.resetAt) {
+        otpSendAttempts.set(key, { count: 1, resetAt: now + OTP_SEND_WINDOW_MS });
+        return true;
+    }
+    if (entry.count >= MAX_OTP_SENDS) {
+        return false;
+    }
+    entry.count++;
+    return true;
+}
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
@@ -23,6 +42,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 { error: "Invalid email format" },
                 { status: 400 }
+            );
+        }
+
+        // Rate limit: max 3 OTP sends per email per 10 minutes
+        const normalizedEmail = email.toLowerCase().trim();
+        if (!checkOTPRateLimit(normalizedEmail)) {
+            return NextResponse.json(
+                { error: "Terlalu banyak permintaan kode OTP. Silakan coba lagi dalam beberapa menit." },
+                { status: 429 }
             );
         }
 

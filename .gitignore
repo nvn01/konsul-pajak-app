@@ -1,19 +1,52 @@
-# Docker Compose and OS files
-docker-compose.yml
-desktop.ini
-
-# Environment variables
+# ═══════════════════════════════════════════
+# Environment & Secrets (NEVER commit these)
+# ═══════════════════════════════════════════
 .env
+.env.*
 .env.local
 .env.*.local
+.env.production
 
-# PDF files in data directory
-**/data/**/*.pdf
-**/data/*.pdf
-konsul-pajak-preprocessing-data/data/**/*.pdf
-konsul-pajak-preprocessing-data/data/*.pdf
+# GCP Service Account Keys
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!konsul-pajak-App/prisma/uu.json
 
-# Poetry
+# SSL certificates
+*.pem
+*.key
+
+# ═══════════════════════════════════════════
+# Docker & Infrastructure
+# ═══════════════════════════════════════════
+docker-compose.yml
+
+# ═══════════════════════════════════════════
+# Node.js / Next.js
+# ═══════════════════════════════════════════
+node_modules/
+.pnp
+.pnp.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+.vercel
+
+# Node package manager debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Prisma generated files
+**/generated/
+
+# ═══════════════════════════════════════════
+# Python (preprocessing)
+# ═══════════════════════════════════════════
 .venv/
 venv/
 ENV/
@@ -21,8 +54,6 @@ env/
 *.egg-info/
 dist/
 build/
-
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -33,7 +64,15 @@ __pycache__/
 pip-log.txt
 pip-delete-this-directory.txt
 
-# IDEs
+# ═══════════════════════════════════════════
+# PDF files in data directory
+# ═══════════════════════════════════════════
+**/data/**/*.pdf
+**/data/*.pdf
+
+# ═══════════════════════════════════════════
+# IDEs & Editors
+# ═══════════════════════════════════════════
 .vscode/
 .idea/
 *.swp
@@ -43,7 +82,9 @@ pip-delete-this-directory.txt
 .pydevproject
 .settings/
 
-# OS
+# ═══════════════════════════════════════════
+# OS Files
+# ═══════════════════════════════════════════
 .DS_Store
 .DS_Store?
 ._*
@@ -51,21 +92,36 @@ pip-delete-this-directory.txt
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 *.tmp
 
-# Database
+# ═══════════════════════════════════════════
+# Databases
+# ═══════════════════════════════════════════
 *.db
 *.sqlite
 *.sqlite3
 
+# ═══════════════════════════════════════════
 # Logs
+# ═══════════════════════════════════════════
 *.log
 logs/
 
+# ═══════════════════════════════════════════
+# Test & Debug Files
+# ═══════════════════════════════════════════
+*.sql
+UU-test*.html
+
+# ═══════════════════════════════════════════
 # Jupyter Notebook
+# ═══════════════════════════════════════════
 .ipynb_checkpoints
 
-# pyenv
+# ═══════════════════════════════════════════
+# Python tools
+# ═══════════════════════════════════════════
 .python-version
 
 # Coverage reports
@@ -80,43 +136,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# Node.js / Next.js
-node_modules/
-.pnp
-.pnp.js
-.next/
-out/
-next-env.d.ts
-*.tsbuildinfo
-.vercel
-
-# Prisma generated files
-**/generated/
-
-# Node package manager debug logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# GCP Service Account Keys
-*.json
-!package.json
-!package-lock.json
-!tsconfig.json
-
-# SSL certificates
-*.pem
-
+# ═══════════════════════════════════════════
 # Reference folder
+# ═══════════════════════════════════════════
 reference/
-
-# Test / scratch files
-UU-test1.html
-konsul-pajak-App/test_vertex.cjs
-konsul-pajak-App/chartdb-schema.sql
-
-# Production env
-.env.production
-
-.gitignore

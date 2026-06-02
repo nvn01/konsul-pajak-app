@@ -3,10 +3,35 @@ import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { createTRPCRouter, publicProcedure, t } from "nvn/server/api/trpc";
+import crypto from "crypto";
 
-// Simple token: base64 of "admin:<id>:<timestamp>"
+function getSecret(): string {
+  return process.env.NEXTAUTH_SECRET || "fallback-secret-change-me";
+}
+
 function generateToken(adminId: number): string {
-  return Buffer.from(`admin:${adminId}:${Date.now()}`).toString("base64");
+  const payload = `admin:${adminId}:${Date.now()}`;
+  const signature = crypto.createHmac("sha256", getSecret()).update(payload).digest("hex");
+  return Buffer.from(`${payload}:${signature}`).toString("base64");
+}
+
+// In-memory rate limiter for admin login attempts
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkLoginRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(key, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= MAX_LOGIN_ATTEMPTS) {
+    return false;
+  }
+  entry.count++;
+  return true;
 }
 
 const COOKIE_NAME = "admin_session";
@@ -29,10 +54,22 @@ const adminMiddleware = t.middleware(async ({ ctx, next }) => {
 
   try {
     const decoded = Buffer.from(token, "base64").toString("utf-8");
-    const [prefix, idStr] = decoded.split(":");
-    if (prefix !== "admin" || !idStr) throw new Error();
+    const parts = decoded.split(":");
+    if (parts.length !== 4 || parts[0] !== "admin") throw new Error();
 
-    const admin = await ctx.db.admin.findUnique({ where: { id: parseInt(idStr) } });
+    const [prefix, idStr, timestampStr, signature] = parts;
+    const payload = `${prefix}:${idStr}:${timestampStr}`;
+    const expected = crypto.createHmac("sha256", getSecret()).update(payload).digest("hex");
+
+    if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      throw new Error();
+    }
+
+    // Check token expiration (24 hours)
+    const tokenAge = Date.now() - parseInt(timestampStr);
+    if (isNaN(tokenAge) || tokenAge > 24 * 60 * 60 * 1000) throw new Error();
+
+    const admin = await ctx.db.admin.findUnique({ where: { id: parseInt(idStr!) } });
     if (!admin) throw new Error();
 
     return next({ ctx: { ...ctx, admin } });
@@ -48,6 +85,15 @@ export const adminRouter = createTRPCRouter({
   login: publicProcedure
     .input(z.object({ username: z.string(), password: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Rate limit: max 5 login attempts per IP per 15 minutes
+      const ip = ctx.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      if (!checkLoginRateLimit(ip)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Terlalu banyak percobaan login. Silakan coba lagi dalam 15 menit.",
+        });
+      }
+
       const admin = await ctx.db.admin.findUnique({ where: { username: input.username } });
       if (!admin) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Username atau password salah." });
@@ -59,10 +105,23 @@ export const adminRouter = createTRPCRouter({
       }
 
       const token = generateToken(admin.id);
-      return { success: true, token };
+
+      // Set secure HTTP-only cookie server-side
+      const cookieStore = await cookies();
+      cookieStore.set(COOKIE_NAME, token, {
+        path: "/",
+        maxAge: 86400,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+
+      return { success: true };
     }),
 
-  logout: publicProcedure.mutation(() => {
+  logout: publicProcedure.mutation(async () => {
+    const cookieStore = await cookies();
+    cookieStore.delete(COOKIE_NAME);
     return { success: true };
   }),
 

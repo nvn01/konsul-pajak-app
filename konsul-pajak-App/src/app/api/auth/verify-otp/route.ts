@@ -3,6 +3,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "nvn/server/db";
 import { verifyOTP } from "nvn/lib/otp";
 
+// In-memory rate limiter for OTP verification attempts
+const verifyAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_VERIFY_ATTEMPTS = 5;
+const VERIFY_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkVerifyRateLimit(key: string): boolean {
+    const now = Date.now();
+    const entry = verifyAttempts.get(key);
+    if (!entry || now > entry.resetAt) {
+        verifyAttempts.set(key, { count: 1, resetAt: now + VERIFY_WINDOW_MS });
+        return true;
+    }
+    if (entry.count >= MAX_VERIFY_ATTEMPTS) {
+        return false;
+    }
+    entry.count++;
+    return true;
+}
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
@@ -20,6 +39,19 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 { error: "Verification code is required" },
                 { status: 400 }
+            );
+        }
+
+        // Rate limit: max 5 verification attempts per email per 15 minutes
+        const normalizedEmail = email.toLowerCase().trim();
+        if (!checkVerifyRateLimit(normalizedEmail)) {
+            // Delete all tokens for this email on lockout
+            await db.verificationToken.deleteMany({
+                where: { identifier: email },
+            });
+            return NextResponse.json(
+                { error: "Terlalu banyak percobaan verifikasi. Silakan minta kode baru setelah beberapa menit." },
+                { status: 429 }
             );
         }
 
@@ -86,14 +118,15 @@ export async function POST(request: NextRequest) {
                 },
             });
         } else {
-            // Update emailVerified if not set
-            if (!user.emailVerified) {
-                user = await db.user.update({
-                    where: { email },
-                    data: { emailVerified: new Date() },
-                });
-            }
+            // Update emailVerified timestamp (used by CredentialsProvider authorize check)
+            user = await db.user.update({
+                where: { email },
+                data: { emailVerified: new Date() },
+            });
         }
+
+        // Reset verify attempts on successful verification
+        verifyAttempts.delete(normalizedEmail);
 
         // Return success with user data
         return NextResponse.json({

@@ -146,7 +146,7 @@ export async function sendOTPEmail(email: string, code: string): Promise<void> {
       throw new Error(`Failed to send email: ${error.message}`);
     }
 
-    console.log("Email sent successfully:", data);
+    // Email sent successfully
   } catch (error) {
     console.error("Error in sendOTPEmail:", error);
     throw error;
