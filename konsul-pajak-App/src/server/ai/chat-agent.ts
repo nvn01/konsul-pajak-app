@@ -152,7 +152,7 @@ export async function answerTaxQuestion(
         temperature: 0.1,
         // Enable thinking/reasoning for deeper legal analysis
         thinkingConfig: {
-          thinkingBudget: 4096,
+          thinkingBudget: 2048,
         },
         // Grounding: use Vertex AI Search data store for RAG
         tools: [
