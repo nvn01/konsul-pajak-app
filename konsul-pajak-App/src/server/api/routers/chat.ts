@@ -97,6 +97,113 @@ async function computeCreditCost(
   return { cost, isSpam };
 }
 
+function detectJenis(sourceText: string): string | null {
+  const s = sourceText.trim();
+  // Order matters: check longer/more-specific patterns first.
+  if (/\b(?:Peraturan\s+Menteri\s+Keuangan|PMK)\b/i.test(s)) return 'Peraturan Menteri Keuangan';
+  if (/\b(?:Peraturan\s+Pemerintah|PP)\b/i.test(s) && !/\bPPh\b/i.test(s)) return 'Peraturan Pemerintah';
+  if (/\b(?:Peraturan\s+Presiden|Perpres)\b/i.test(s)) return 'Peraturan Presiden';
+  if (/\b(?:Keputusan\s+Presiden|Keppres)\b/i.test(s)) return 'Keputusan Presiden';
+  if (/\b(?:Surat\s+Edaran|SE)\b/i.test(s)) return 'Surat Edaran';
+  if (/\b(?:Peraturan\s+Direktur\s+Jenderal|PER)\b/i.test(s)) return 'Peraturan Direktur Jenderal';
+  if (/\bSDSN\b/i.test(s)) return 'SDSN';
+  if (/\b(?:Undang-undang|Undang\s+Undang|UU)\b/i.test(s)) return 'Undang-undang';
+  return null;
+}
+
+async function augmentSourcesWithUrls(db: any, sources: SourceCitation[]) {
+  return Promise.all(
+    sources.map(async (src) => {
+      const detectedJenis = detectJenis(src.source);
+
+      const jenisFilter = detectedJenis
+        ? { jenis: { contains: detectedJenis, mode: 'insensitive' as const } }
+        : {};
+
+      const numMatch = src.source.match(/Nomor\s+(\d+\s+TAHUN\s+\d+)/i) || src.source.match(/No\.?\s+(\d+\s+TAHUN\s+\d+)/i);
+      if (numMatch && numMatch[1]) {
+        const peraturan = await db.peraturan.findFirst({
+          where: {
+            ...jenisFilter,
+            OR: [
+              { nomor: { contains: numMatch[1], mode: 'insensitive' } },
+              { title: { contains: numMatch[1], mode: 'insensitive' } },
+            ],
+          },
+          select: { url: true },
+        });
+        if (peraturan?.url) {
+          return { ...src, url: peraturan.url };
+        }
+      }
+
+      const typeNumMatch = src.source.match(
+        /(?:PP|PMK|SE|PER|Perpres|Keppres|SDSN|Peraturan\s+Pemerintah|Peraturan\s+Menteri\s+Keuangan|Peraturan\s+Presiden|Keputusan\s+Presiden|Surat\s+Edaran)[- ]*(?:Nomor\s*)?(\d[\w/.-]*(?:\s*(?:Tahun|\/)\s*\d{4})?)/i,
+      );
+      if (typeNumMatch && typeNumMatch[1]) {
+        const searchNum = typeNumMatch[1].replace(/\s+/g, ' ').trim();
+        const peraturan = await db.peraturan.findFirst({
+          where: {
+            ...jenisFilter,
+            OR: [
+              { nomor: { contains: searchNum, mode: 'insensitive' } },
+              { title: { contains: searchNum, mode: 'insensitive' } },
+            ],
+          },
+          select: { url: true },
+        });
+        if (peraturan?.url) {
+          return { ...src, url: peraturan.url };
+        }
+      }
+
+      const cleanedSource = src.source
+        .replace(/(?:Pasal|Ayat|huruf|angka|jo\.?|dan|atau|tentang)\s*/gi, ' ')
+        .replace(/[(),.:;""'"]/g, ' ')
+        .trim();
+      const yearMatch = cleanedSource.match(/\b(19|20)\d{2}\b/);
+      const broadNumMatch = cleanedSource.match(/\b(\d+)\b/);
+
+      if (yearMatch && broadNumMatch) {
+        const peraturan = await db.peraturan.findFirst({
+          where: {
+            AND: [
+              { tahun: yearMatch[0] },
+              jenisFilter,
+              {
+                OR: [
+                  { nomor: { contains: broadNumMatch[1], mode: 'insensitive' } },
+                  { title: { contains: cleanedSource.substring(0, 60), mode: 'insensitive' } },
+                ],
+              },
+            ],
+          },
+          select: { url: true },
+        });
+        if (peraturan?.url) {
+          return { ...src, url: peraturan.url };
+        }
+      }
+
+      const peraturanFallback = await db.peraturan.findFirst({
+        where: {
+          ...jenisFilter,
+          OR: [
+            { title: { contains: src.source.substring(0, 80), mode: 'insensitive' } },
+            { deskripsi: { contains: src.source.substring(0, 80), mode: 'insensitive' } },
+          ],
+        },
+        select: { url: true },
+      });
+      if (peraturanFallback?.url) {
+        return { ...src, url: peraturanFallback.url };
+      }
+
+      return { ...src, url: undefined };
+    }),
+  );
+}
+
 export const chatRouter = createTRPCRouter({
   // ─── Credit Info (for logged-in users) ─────────────────
   getCredits: protectedProcedure.query(async ({ ctx }) => {
@@ -146,6 +253,7 @@ export const chatRouter = createTRPCRouter({
 
       // Call AI without any history (single-turn)
       const { answer, sources } = await answerTaxQuestion(trimmedMessage, []);
+      const augmentedSources = await augmentSourcesWithUrls(ctx.db, sources);
 
       // Record guest usage in DB
       await ctx.db.guestUsage.create({
@@ -157,7 +265,7 @@ export const chatRouter = createTRPCRouter({
 
       return {
         answer,
-        sources,
+        sources: augmentedSources,
       };
     }),
 
@@ -294,116 +402,7 @@ export const chatRouter = createTRPCRouter({
       }));
 
       const { answer, sources } = await answerTaxQuestion(trimmedMessage, messageHistory);
-
-      // Augment sources with URLs from Peraturan table
-      // ── Helper: detect jenis (regulation type) from source text ──
-      function detectJenis(sourceText: string): string | null {
-        const s = sourceText.trim();
-        // Order matters: check longer/more-specific patterns first
-        if (/\b(?:Peraturan\s+Menteri\s+Keuangan|PMK)\b/i.test(s)) return 'Peraturan Menteri Keuangan';
-        if (/\b(?:Peraturan\s+Pemerintah|PP)\b/i.test(s) && !/\bPPh\b/i.test(s)) return 'Peraturan Pemerintah';
-        if (/\b(?:Peraturan\s+Presiden|Perpres)\b/i.test(s)) return 'Peraturan Presiden';
-        if (/\b(?:Surat\s+Edaran|SE)\b/i.test(s)) return 'Surat Edaran';
-        if (/\b(?:Peraturan\s+Direktur\s+Jenderal|PER)\b/i.test(s)) return 'Peraturan Direktur Jenderal';
-        if (/\b(?:Undang-undang|Undang\s+Undang|UU)\b/i.test(s)) return 'Undang-undang';
-        return null; // unknown type — don't filter
-      }
-
-      const augmentedSources = await Promise.all(
-        sources.map(async (src) => {
-          const detectedJenis = detectJenis(src.source);
-
-          // Build a jenis filter condition when we can determine the type
-          const jenisFilter = detectedJenis
-            ? { jenis: { contains: detectedJenis, mode: 'insensitive' as const } }
-            : {};
-
-          // Strategy 1: Try exact "Nomor X TAHUN Y" pattern
-          const numMatch = src.source.match(/Nomor\s+(\d+\s+TAHUN\s+\d+)/i) || src.source.match(/No\.?\s+(\d+\s+TAHUN\s+\d+)/i);
-          if (numMatch && numMatch[1]) {
-            const peraturan = await ctx.db.peraturan.findFirst({
-              where: {
-                ...jenisFilter,
-                OR: [
-                  { nomor: { contains: numMatch[1], mode: 'insensitive' } },
-                  { title: { contains: numMatch[1], mode: 'insensitive' } },
-                ],
-              },
-              select: { url: true },
-            });
-            if (peraturan?.url) {
-              return { ...src, url: peraturan.url };
-            }
-          }
-
-          // Strategy 2: Try type+number pattern (PP 55/2022, PMK 168/2023, SE-5/PJ/2024, etc.)
-          const typeNumMatch = src.source.match(
-            /(?:PP|PMK|SE|PER|Perpres|Peraturan\s+Pemerintah|Peraturan\s+Menteri\s+Keuangan|Surat\s+Edaran)[- ]*(?:Nomor\s*)?(\d[\w/.-]*(?:\s*(?:Tahun|\/)\s*\d{4})?)/i
-          );
-          if (typeNumMatch && typeNumMatch[1]) {
-            const searchNum = typeNumMatch[1].replace(/\s+/g, ' ').trim();
-            const peraturan = await ctx.db.peraturan.findFirst({
-              where: {
-                ...jenisFilter,
-                OR: [
-                  { nomor: { contains: searchNum, mode: 'insensitive' } },
-                  { title: { contains: searchNum, mode: 'insensitive' } },
-                ],
-              },
-              select: { url: true },
-            });
-            if (peraturan?.url) {
-              return { ...src, url: peraturan.url };
-            }
-          }
-
-          // Strategy 3: Broad keyword search — year + number across title/deskripsi
-          const cleanedSource = src.source
-            .replace(/(?:Pasal|Ayat|huruf|angka|jo\.?|dan|atau|tentang)\s*/gi, ' ')
-            .replace(/[(),.:;""'"]/g, ' ')
-            .trim();
-          const yearMatch = cleanedSource.match(/\b(19|20)\d{2}\b/);
-          const broadNumMatch = cleanedSource.match(/\b(\d+)\b/);
-
-          if (yearMatch && broadNumMatch) {
-            const peraturan = await ctx.db.peraturan.findFirst({
-              where: {
-                AND: [
-                  { tahun: yearMatch[0] },
-                  jenisFilter,
-                  {
-                    OR: [
-                      { nomor: { contains: broadNumMatch[1], mode: 'insensitive' } },
-                      { title: { contains: cleanedSource.substring(0, 60), mode: 'insensitive' } },
-                    ],
-                  },
-                ],
-              },
-              select: { url: true },
-            });
-            if (peraturan?.url) {
-              return { ...src, url: peraturan.url };
-            }
-          }
-
-          // Strategy 4: Last resort — full-text search on the raw source string
-          const peraturanFallback = await ctx.db.peraturan.findFirst({
-            where: {
-              ...jenisFilter,
-              OR: [
-                { title: { contains: src.source.substring(0, 80), mode: 'insensitive' } },
-                { deskripsi: { contains: src.source.substring(0, 80), mode: 'insensitive' } },
-              ],
-            },
-            select: { url: true },
-          });
-          if (peraturanFallback?.url) {
-            return { ...src, url: peraturanFallback.url };
-          }
-
-          return { ...src, url: undefined };
-        })
-      );
+      const augmentedSources = await augmentSourcesWithUrls(ctx.db, sources);
 
       const assistantMessage = await ctx.db.message.create({
         data: {
@@ -426,7 +425,7 @@ export const chatRouter = createTRPCRouter({
           role: 'assistant' as const,
           content: assistantMessage.content,
           createdAt: assistantMessage.createdAt,
-          sources,
+          sources: augmentedSources,
         },
         creditsRemaining: newCredits,
         creditCost: cost,
