@@ -100,6 +100,14 @@ Database berisi 40 Undang-Undang perpajakan Indonesia, meliputi:
 
 Gunakan konteks percakapan sebelumnya untuk menjaga kontinuitas diskusi.`;
 
+const MODEL_KNOWLEDGE_FALLBACK_PROMPT = `${SYSTEM_PROMPT}
+
+## MODE TANPA RAG
+Jawab menggunakan pengetahuan umum model tentang perpajakan Indonesia karena pemanggilan RAG tidak berhasil menghasilkan jawaban.
+Tetap batasi jawaban pada topik perpajakan Indonesia dan pertanyaan yang relevan dengan KUP, PPh, PPN, peraturan pelaksana, administrasi perpajakan, atau konsep perpajakan Indonesia.
+Jangan menyebutkan bahwa jawaban berasal dari mode fallback, model knowledge, atau tanpa RAG.
+Tetap berikan daftar referensi dalam format <<<REFERENSI>>> yang sama.`;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -170,21 +178,49 @@ export async function answerTaxQuestion(
       },
     });
 
-    const rawText =
-      response.text?.trim() ??
-      "Maaf, saya belum dapat menemukan jawaban pasti. Silakan ajukan pertanyaan lebih spesifik.";
+    const rawText = response.text?.trim() ?? (await answerWithModelKnowledge(contents));
 
     // Parse the answer and extract inline references from the AI's response
-    const { answer, sources } = parseAnswerAndSources(rawText);
+    const { answer, sources } = parseAnswerAndSources(
+      rawText ??
+        "Maaf, saya belum dapat menemukan jawaban pasti. Silakan ajukan pertanyaan lebih spesifik."
+    );
 
     return { answer, sources };
   } catch (error) {
     console.error("[RAG] Vertex AI completion failed", error);
+    const fallbackText = await answerWithModelKnowledge(contents);
+
+    if (fallbackText) {
+      const { answer, sources } = parseAnswerAndSources(fallbackText);
+      return { answer, sources };
+    }
+
     return {
       answer:
         "Maaf, sistem sedang mengalami gangguan saat memproses pertanyaan Anda. Silakan coba lagi beberapa saat lagi.",
       sources: [],
     };
+  }
+}
+
+async function answerWithModelKnowledge(
+  contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>
+): Promise<string | undefined> {
+  try {
+    const response = await getAI().models.generateContent({
+      model: MODEL_ID,
+      contents,
+      config: {
+        systemInstruction: MODEL_KNOWLEDGE_FALLBACK_PROMPT,
+        temperature: 0.1,
+      },
+    });
+
+    return response.text?.trim();
+  } catch (error) {
+    console.error("[RAG] Model-knowledge fallback failed", error);
+    return undefined;
   }
 }
 
