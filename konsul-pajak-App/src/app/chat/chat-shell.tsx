@@ -14,7 +14,6 @@ import { BrandText } from "@/components/brand-text";
 import { AuthFeatureTabs } from "@/components/auth-feature-tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
@@ -99,6 +98,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
   }>>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const historyListRef = useRef<HTMLDivElement>(null);
 
   // Track the latest AI message ID for typewriter animation
   const [newAssistantMessageId, setNewAssistantMessageId] = useState<number | null>(null);
@@ -147,6 +147,28 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
+
+  const scrollHistoryToTop = useCallback(() => {
+    historyListRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const refreshHistoryToTop = useCallback(() => {
+    if (!isGuest) {
+      void historyQuery.refetch().then(() => {
+        setTimeout(scrollHistoryToTop, 50);
+      });
+    }
+  }, [historyQuery, isGuest, scrollHistoryToTop]);
+
+  const handleToggleSidebar = useCallback(() => {
+    if (isSidebarOpen) {
+      setIsSidebarOpen(false);
+      return;
+    }
+
+    setIsSidebarOpen(true);
+    refreshHistoryToTop();
+  }, [isSidebarOpen, refreshHistoryToTop]);
 
   // Scroll when messages update
   useEffect(() => {
@@ -254,6 +276,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
         utils.chat.history.invalidate(),
         utils.chat.getCredits.invalidate(),
       ]);
+      setTimeout(scrollHistoryToTop, 100);
 
     } catch (error: any) {
       console.error("[Chat] Failed to send message", error);
@@ -288,6 +311,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
     if (pathname !== "/chat") {
       window.history.pushState(null, '', '/chat');
     }
+    scrollHistoryToTop();
   };
 
   const handleLogout = () => {
@@ -305,6 +329,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
   const deleteChatMutation = api.chat.deleteChat.useMutation({
     onSuccess: () => {
       void utils.chat.history.invalidate();
+      setTimeout(scrollHistoryToTop, 100);
       setDeletingChatId(null);
       // If deleting current chat, redirect to main chat
       if (deletingChatId === currentChatId) {
@@ -316,6 +341,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
   const renameChatMutation = api.chat.renameChat.useMutation({
     onSuccess: () => {
       void utils.chat.history.invalidate();
+      setTimeout(scrollHistoryToTop, 100);
       setRenamingChatId(null);
       setNewChatTitle("");
     },
@@ -446,7 +472,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
               variant="ghost"
               size="icon"
               className="md:hidden h-8 w-8 p-0"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              onClick={handleToggleSidebar}
             >
               {isSidebarOpen ? (
                 <X className="h-6 w-6" />
@@ -565,10 +591,12 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
             bg-sidebar text-sidebar-foreground border-sidebar-border
             flex flex-col border-r
             fixed md:static
-            top-[65px] md:top-0 bottom-0 left-0
+            inset-y-0 md:inset-auto left-0
             z-50
-            w-64 md:w-64
+            h-dvh md:h-auto
+            w-[82vw] max-w-sm md:w-64 md:max-w-none
             transform transition-transform duration-300 ease-in-out
+            shadow-2xl md:shadow-none
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
           `}>
             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
@@ -604,12 +632,30 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
             bg-sidebar text-sidebar-foreground border-sidebar-border
             flex flex-col border-r
             fixed md:static
-            top-[65px] md:top-0 bottom-0 left-0
+            inset-y-0 md:inset-auto left-0
             z-50
-            w-64 md:w-64
+            h-dvh md:h-auto
+            w-[82vw] max-w-sm md:w-64 md:max-w-none
             transform transition-transform duration-300 ease-in-out
+            shadow-2xl md:shadow-none
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
           `}>
+            <div className="flex items-center justify-between border-b border-sidebar-border px-4 py-4 md:hidden">
+              <div>
+                <div className="text-base font-semibold">Riwayat</div>
+                <div className="text-xs text-sidebar-foreground/60">
+                  Percakapan tersimpan
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseSidebar}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                aria-label="Tutup riwayat"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
             <div className="border-sidebar-border border-b p-3">
               <button
                 type="button"
@@ -626,9 +672,9 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
               </button>
             </div>
 
-            <ScrollArea className="flex-1 min-h-0">
+            <div ref={historyListRef} className="flex-1 min-h-0 overflow-y-auto">
               <div className="space-y-1 p-3">{sidebarContent}</div>
-            </ScrollArea>
+            </div>
           </aside>
         )}
 

@@ -1,6 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type AuthFeature = "chat" | "direktori" | "kalkulator";
 
@@ -69,17 +75,53 @@ export function AuthFeatureTabs({ active }: { active?: AuthFeature }) {
         })}
       </nav>
 
-      <nav
-        aria-label="Halaman aktif"
-        className="flex items-center rounded-full bg-white p-1 shadow-sm min-[400px]:hidden"
-      >
-        <div
-          className="bg-sidebar-primary text-sidebar-primary-foreground rounded-full px-3 py-1.5 text-xs font-semibold"
-          aria-current="page"
-        >
-          {activeFeature?.shortLabel ?? "Fitur"}
-        </div>
-      </nav>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 rounded-full bg-white p-1 shadow-sm min-[400px]:hidden"
+            aria-label="Pilih fitur"
+          >
+            <span
+              className="bg-sidebar-primary text-sidebar-primary-foreground rounded-full px-3 py-1.5 text-xs font-semibold"
+              aria-current="page"
+            >
+              {activeFeature?.shortLabel ?? "Fitur"}
+            </span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="mr-1 text-gray-500"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="center" sideOffset={8} className="w-44">
+          {features.map((feature) => {
+            if (feature.key === active) {
+              return (
+                <DropdownMenuItem key={feature.key} disabled>
+                  {feature.label}
+                </DropdownMenuItem>
+              );
+            }
+
+            return (
+              <DropdownMenuItem key={feature.key} asChild>
+                <Link href={feature.href}>{feature.label}</Link>
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 }
