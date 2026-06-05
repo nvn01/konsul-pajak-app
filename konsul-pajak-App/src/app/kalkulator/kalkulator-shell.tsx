@@ -36,6 +36,7 @@ import { PublicHeader } from "@/components/public-header";
 import { SignupPrompt } from "@/components/signup-prompt";
 import { CreditsExhaustedModal } from "@/components/credits-exhausted-modal";
 import { BrandText } from "@/components/brand-text";
+import { AuthFeatureTabs } from "@/components/auth-feature-tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -602,25 +603,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
               </Link>
             </div>
 
-            {/* Toggle Tabs */}
-            <div className="flex items-center bg-white rounded-full p-1 shadow-sm">
-              <Link
-                href="/chat"
-                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <span className="hidden sm:inline">Tanya Pajak AI</span>
-                <span className="sm:hidden">Tanya AI</span>
-              </Link>
-              <Link
-                href="/direktori"
-                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                Direktori
-              </Link>
-              <div className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-sidebar-primary-foreground bg-sidebar-primary">
-                Kalkulator
-              </div>
-            </div>
+            <AuthFeatureTabs active="kalkulator" />
 
             <div className="flex items-center gap-3">
               <DropdownMenu>

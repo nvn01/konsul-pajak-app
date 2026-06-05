@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { LogOut, Info, Phone, MessageCircle, BookOpen, Calculator, ShieldCheck, HelpCircle, ArrowLeft, Coins } from "lucide-react";
+import { AuthFeatureTabs } from "@/components/auth-feature-tabs";
 import { BrandText } from "@/components/brand-text";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -96,28 +97,7 @@ export default function PricingPage() {
               </Link>
             </div>
 
-            {/* Toggle Tabs */}
-            <div className="flex items-center bg-white rounded-full p-1 shadow-sm">
-              <Link
-                href="/chat"
-                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <span className="hidden sm:inline">Tanya Pajak AI</span>
-                <span className="sm:hidden">Tanya AI</span>
-              </Link>
-              <Link
-                href="/direktori"
-                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                Direktori
-              </Link>
-              <Link
-                href="/kalkulator"
-                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                Kalkulator
-              </Link>
-            </div>
+            <AuthFeatureTabs />
 
             {/* User avatar dropdown */}
             <DropdownMenu>

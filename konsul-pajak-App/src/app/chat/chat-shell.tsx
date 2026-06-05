@@ -11,6 +11,7 @@ import { PublicHeader } from "@/components/public-header";
 import { SignupPrompt } from "@/components/signup-prompt";
 import { CreditsExhaustedModal } from "@/components/credits-exhausted-modal";
 import { BrandText } from "@/components/brand-text";
+import { AuthFeatureTabs } from "@/components/auth-feature-tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -459,25 +460,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
             </Link>
           </div>
 
-          {/* Toggle Tabs */}
-          <div className="flex items-center bg-white rounded-full p-1 shadow-sm">
-            <div className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-sidebar-primary-foreground bg-sidebar-primary">
-              <span className="hidden sm:inline">Tanya Pajak AI</span>
-              <span className="sm:hidden">Tanya AI</span>
-            </div>
-            <Link
-              href="/direktori"
-              className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Direktori
-            </Link>
-            <Link
-              href="/kalkulator"
-              className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Kalkulator
-            </Link>
-          </div>
+          <AuthFeatureTabs active="chat" />
 
           <div className="flex items-center gap-3">
 
