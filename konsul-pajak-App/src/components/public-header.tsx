@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { BrandText } from "@/components/brand-text";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /**
  * PublicHeader — shared navigation for non-logged-in users.
@@ -71,35 +77,39 @@ export function PublicHeader() {
           </Link>
 
           {/* Fitur Dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              className="flex items-center gap-1 text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground transition-colors cursor-pointer"
-              onClick={() => setIsFiturOpen(!isFiturOpen)}
-              onBlur={() => setTimeout(() => setIsFiturOpen(false), 200)}
-            >
-              Fitur
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`transition-transform duration-200 ${isFiturOpen ? "rotate-180" : ""}`}
+          <DropdownMenu open={isFiturOpen} onOpenChange={setIsFiturOpen}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1 text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground transition-colors cursor-pointer"
               >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
+                Fitur
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={`transition-transform duration-200 ${isFiturOpen ? "rotate-180" : ""}`}
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+            </DropdownMenuTrigger>
 
-            {isFiturOpen && (
-              <div className="absolute top-full right-0 mt-2 w-56 rounded-lg border border-border bg-card text-card-foreground shadow-lg py-1 z-50">
+            <DropdownMenuContent
+              align="end"
+              sideOffset={8}
+              className="w-56 rounded-lg border-border bg-card p-1 text-card-foreground shadow-lg"
+            >
+              <DropdownMenuItem asChild className="cursor-pointer p-0 focus:bg-muted">
                 <Link
                   href="/chat"
-                  className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted transition-colors"
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-sm"
                   onClick={() => setIsFiturOpen(false)}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -110,9 +120,11 @@ export function PublicHeader() {
                     <div className="text-xs text-muted-foreground">Tanya seputar perpajakan</div>
                   </div>
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer p-0 focus:bg-muted">
                 <Link
                   href="/direktori"
-                  className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted transition-colors"
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-sm"
                   onClick={() => setIsFiturOpen(false)}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -123,9 +135,11 @@ export function PublicHeader() {
                     <div className="text-xs text-muted-foreground">Jelajahi undang-undang pajak</div>
                   </div>
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer p-0 focus:bg-muted">
                 <Link
                   href="/kalkulator"
-                  className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted transition-colors"
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-sm"
                   onClick={() => setIsFiturOpen(false)}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -145,9 +159,9 @@ export function PublicHeader() {
                     <div className="text-xs text-muted-foreground">Hitung pajak dengan AI</div>
                   </div>
                 </Link>
-              </div>
-            )}
-          </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
 
         {/* Sign In Button */}
