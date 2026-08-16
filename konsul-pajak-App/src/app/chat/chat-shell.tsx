@@ -792,6 +792,14 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
                 <kbd className="rounded border border-border bg-muted px-1 text-[10px]">Enter</kbd>{" "}
                 untuk baris baru
               </div>
+              <p
+                role="note"
+                className="text-muted-foreground mt-1 px-1 text-[11px] leading-relaxed"
+              >
+                Jawaban AI bersifat informatif dan bukan nasihat hukum
+                profesional. Verifikasi informasi melalui sumber resmi atau
+                konsultan pajak sebelum mengambil keputusan.
+              </p>
             </form>
           </div>
         </main>
