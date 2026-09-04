@@ -31,8 +31,8 @@ const features: Array<{
   {
     key: "kalkulator",
     href: "/kalkulator",
-    label: "Kalkulator",
-    shortLabel: "Kalkulator",
+    label: "Kalkulator (Development)",
+    shortLabel: "Kalkulator (Dev)",
   },
 ];
 

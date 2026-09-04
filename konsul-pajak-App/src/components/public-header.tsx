@@ -155,8 +155,8 @@ export function PublicHeader() {
                     <path d="M8 18h.01" />
                   </svg>
                   <div>
-                    <div className="font-medium">Kalkulator Pajak</div>
-                    <div className="text-xs text-muted-foreground">Hitung pajak dengan AI</div>
+                    <div className="font-medium">Kalkulator (Development)</div>
+                    <div className="text-xs text-muted-foreground">Dalam pengembangan</div>
                   </div>
                 </Link>
               </DropdownMenuItem>
@@ -223,7 +223,7 @@ export function PublicHeader() {
             className="block px-3 py-2 rounded-lg text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            Kalkulator Pajak
+            Kalkulator (Development)
           </Link>
         </nav>
       )}

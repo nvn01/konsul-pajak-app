@@ -493,7 +493,7 @@ function KalkulatorComingSoon({
                   <DropdownMenuItem className="cursor-pointer" asChild>
                     <Link href="/kalkulator">
                       <Calculator className="mr-2 h-4 w-4" />
-                      <span>Kalkulator Pajak</span>
+                      <span>Kalkulator (Development)</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -512,111 +512,29 @@ function KalkulatorComingSoon({
       )}
 
       {/* Main Placeholder Section */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 md:py-16">
-        <div className="w-full max-w-4xl mx-auto space-y-10 text-center">
-          {/* Badge & Title */}
-          <div className="space-y-4 max-w-2xl mx-auto">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sidebar-primary/20 bg-sidebar-primary/10 px-4 py-1.5 text-xs font-semibold text-sidebar-primary shadow-xs">
-              <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-              <span>Segera Hadir &bull; Sedang Dalam Pengembangan</span>
-            </div>
-
-            <div className="relative mx-auto my-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-sidebar-primary/10 text-sidebar-primary shadow-inner">
-              <Calculator className="h-10 w-10" />
-              <div className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
-                <Sparkles className="h-3 w-3" />
-              </div>
-            </div>
-
-            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-              Kalkulator Pajak AI Cerdas
-            </h1>
-
-            <p className="text-sm text-muted-foreground sm:text-base leading-relaxed">
-              Modul kalkulator perpajakan otomatis berbasis AI sedang dalam tahap pembaruan dan pengembangan lanjutan untuk memberikan simulasi perhitungan yang lebih komprehensif, presisi, dan terintegrasi dengan regulasi perpajakan terbaru.
-            </p>
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-16">
+        <div className="w-full max-w-lg mx-auto text-center space-y-4">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-sidebar-primary/10 text-sidebar-primary">
+            <Calculator className="h-8 w-8" />
           </div>
 
-          {/* Planned Features Preview */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 text-left">
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-sidebar-primary/30 transition-colors">
-              <div className="flex items-center gap-3 mb-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-primary/10 text-sidebar-primary">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <h2 className="font-semibold text-foreground text-sm sm:text-base">
-                  PPh 21 TER &amp; Progresif
-                </h2>
-              </div>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Simulasi perhitungan PPh Pasal 21 karyawan tetap, bukan pegawai, dan tenaga ahli berdasarkan tarif TER &amp; lapisan tarif progresif UU HPP.
-              </p>
-            </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Segera Hadir
+          </h1>
 
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-sidebar-primary/30 transition-colors">
-              <div className="flex items-center gap-3 mb-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-primary/10 text-sidebar-primary">
-                  <Tag className="h-5 w-5" />
-                </div>
-                <h2 className="font-semibold text-foreground text-sm sm:text-base">
-                  PPh Final UMKM &amp; Jasa
-                </h2>
-              </div>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Perhitungan PPh Final UMKM 0.5% (PP 55/2022), jasa konstruksi, sewa tanah/bangunan, dan transaksi PPh Pasal 4 ayat (2).
-              </p>
-            </div>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Sedang dalam tahap pengembangan oleh <span className="font-semibold text-foreground">Andre Wijaya</span>.
+          </p>
 
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-sidebar-primary/30 transition-colors">
-              <div className="flex items-center gap-3 mb-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-primary/10 text-sidebar-primary">
-                  <Scale className="h-5 w-5" />
-                </div>
-                <h2 className="font-semibold text-foreground text-sm sm:text-base">
-                  PPN &amp; PPh Badan
-                </h2>
-              </div>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Simulasi PPN dengan tarif berlaku serta penghitungan pajak penghasilan badan dengan fasilitas Pasal 31E UU PPh.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-sidebar-primary/30 transition-colors">
-              <div className="flex items-center gap-3 mb-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-primary/10 text-sidebar-primary">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <h2 className="font-semibold text-foreground text-sm sm:text-base">
-                  Analisis &amp; Dasar Hukum
-                </h2>
-              </div>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Setiap perhitungan otomatis dilengkapi dengan rincian langkah kalkulasi dan sitasi pasal/ayat peraturan yang relevan.
-              </p>
-            </div>
-          </div>
-
-          {/* Action Links */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <div className="pt-4">
             <Button
               asChild
-              size="lg"
-              className="w-full sm:w-auto bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 font-medium cursor-pointer"
+              size="default"
+              className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 font-medium cursor-pointer"
             >
               <Link href="/chat" className="flex items-center gap-2">
                 <MessageCircle className="h-4 w-4" />
-                <span>Konsultasi Pajak di Tanya AI</span>
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="w-full sm:w-auto font-medium cursor-pointer"
-            >
-              <Link href="/direktori" className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                <span>Jelajahi Direktori Peraturan</span>
+                <span>Kembali ke Tanya AI</span>
               </Link>
             </Button>
           </div>
