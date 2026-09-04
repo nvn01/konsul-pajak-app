@@ -380,13 +380,277 @@ function CalculationResultPanel({ result }: { result: TaxCalculationResult }) {
 }
 
 // ---------------------------------------------------------------------------
-// Main Component
+// Main Component & Coming Soon Toggle
 // ---------------------------------------------------------------------------
 interface KalkulatorShellProps {
   isGuest?: boolean;
 }
 
+/**
+ * ---------------------------------------------------------------------------
+ * TOGGLE: Ubah SHOW_COMING_SOON menjadi `false` untuk mengaktifkan kembali
+ * antarmuka kalkulator pajak secara penuh.
+ * Seluruh logic AI, tRPC, state, dan rendering kalkulator asli di bawah tetap utuh.
+ * ---------------------------------------------------------------------------
+ */
+export const SHOW_COMING_SOON = true;
+
+function KalkulatorComingSoon({
+  isGuest,
+  session,
+  creditsQuery,
+  handleLogout,
+}: {
+  isGuest: boolean;
+  session: any;
+  creditsQuery: any;
+  handleLogout: () => void;
+}) {
+  return (
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      {/* Header — Guest vs Authenticated */}
+      {isGuest ? (
+        <PublicHeader />
+      ) : (
+        <header className="bg-primary text-primary-foreground border-primary-foreground/10 border-b px-4 md:px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/" className="flex items-center gap-2">
+                <img
+                  src="/logo-header.png"
+                  alt="KP"
+                  className="h-8 w-8 object-contain"
+                />
+                <BrandText className="text-lg hidden sm:block" />
+              </Link>
+            </div>
+
+            <AuthFeatureTabs active="kalkulator" />
+
+            <div className="flex items-center gap-3">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-10 w-10 rounded-full p-0 cursor-pointer"
+                  >
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage
+                        src={session?.user?.image ?? ""}
+                        alt={session?.user?.name ?? "User"}
+                      />
+                      <AvatarFallback className="bg-accent text-accent-foreground">
+                        {session?.user?.name?.charAt(0)?.toUpperCase() ?? "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1.5">
+                      <p className="text-sm font-medium leading-none">
+                        {session?.user?.name}
+                      </p>
+                      <p className="text-muted-foreground text-xs leading-none">
+                        {session?.user?.email}
+                      </p>
+                      {creditsQuery.data && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-sidebar-primary bg-sidebar-primary/10 px-2.5 py-1 rounded w-fit font-semibold">
+                          <span>Sisa Kredit: {creditsQuery.data.credits} pesan</span>
+                        </div>
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href="/about">
+                      <Info className="mr-2 h-4 w-4" />
+                      <span>Tentang Aplikasi</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href="/contact">
+                      <Phone className="mr-2 h-4 w-4" />
+                      <span>Kontak</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-muted-foreground font-medium px-2 py-1.5">
+                    Fitur
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href="/chat">
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      <span>Konsultasi AI</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href="/direktori">
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      <span>Direktori Peraturan</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href="/kalkulator">
+                      <Calculator className="mr-2 h-4 w-4" />
+                      <span>Kalkulator Pajak</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {/* Main Placeholder Section */}
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 md:py-16">
+        <div className="w-full max-w-4xl mx-auto space-y-10 text-center">
+          {/* Badge & Title */}
+          <div className="space-y-4 max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 rounded-full border border-sidebar-primary/20 bg-sidebar-primary/10 px-4 py-1.5 text-xs font-semibold text-sidebar-primary shadow-xs">
+              <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+              <span>Segera Hadir &bull; Sedang Dalam Pengembangan</span>
+            </div>
+
+            <div className="relative mx-auto my-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-sidebar-primary/10 text-sidebar-primary shadow-inner">
+              <Calculator className="h-10 w-10" />
+              <div className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
+                <Sparkles className="h-3 w-3" />
+              </div>
+            </div>
+
+            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+              Kalkulator Pajak AI Cerdas
+            </h1>
+
+            <p className="text-sm text-muted-foreground sm:text-base leading-relaxed">
+              Modul kalkulator perpajakan otomatis berbasis AI sedang dalam tahap pembaruan dan pengembangan lanjutan untuk memberikan simulasi perhitungan yang lebih komprehensif, presisi, dan terintegrasi dengan regulasi perpajakan terbaru.
+            </p>
+          </div>
+
+          {/* Planned Features Preview */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 text-left">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-sidebar-primary/30 transition-colors">
+              <div className="flex items-center gap-3 mb-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-primary/10 text-sidebar-primary">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <h2 className="font-semibold text-foreground text-sm sm:text-base">
+                  PPh 21 TER &amp; Progresif
+                </h2>
+              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                Simulasi perhitungan PPh Pasal 21 karyawan tetap, bukan pegawai, dan tenaga ahli berdasarkan tarif TER &amp; lapisan tarif progresif UU HPP.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-sidebar-primary/30 transition-colors">
+              <div className="flex items-center gap-3 mb-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-primary/10 text-sidebar-primary">
+                  <Tag className="h-5 w-5" />
+                </div>
+                <h2 className="font-semibold text-foreground text-sm sm:text-base">
+                  PPh Final UMKM &amp; Jasa
+                </h2>
+              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                Perhitungan PPh Final UMKM 0.5% (PP 55/2022), jasa konstruksi, sewa tanah/bangunan, dan transaksi PPh Pasal 4 ayat (2).
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-sidebar-primary/30 transition-colors">
+              <div className="flex items-center gap-3 mb-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-primary/10 text-sidebar-primary">
+                  <Scale className="h-5 w-5" />
+                </div>
+                <h2 className="font-semibold text-foreground text-sm sm:text-base">
+                  PPN &amp; PPh Badan
+                </h2>
+              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                Simulasi PPN dengan tarif berlaku serta penghitungan pajak penghasilan badan dengan fasilitas Pasal 31E UU PPh.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs hover:border-sidebar-primary/30 transition-colors">
+              <div className="flex items-center gap-3 mb-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-primary/10 text-sidebar-primary">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <h2 className="font-semibold text-foreground text-sm sm:text-base">
+                  Analisis &amp; Dasar Hukum
+                </h2>
+              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                Setiap perhitungan otomatis dilengkapi dengan rincian langkah kalkulasi dan sitasi pasal/ayat peraturan yang relevan.
+              </p>
+            </div>
+          </div>
+
+          {/* Action Links */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <Button
+              asChild
+              size="lg"
+              className="w-full sm:w-auto bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 font-medium cursor-pointer"
+            >
+              <Link href="/chat" className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" />
+                <span>Konsultasi Pajak di Tanya AI</span>
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="w-full sm:w-auto font-medium cursor-pointer"
+            >
+              <Link href="/direktori" className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                <span>Jelajahi Direktori Peraturan</span>
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
+  const { data: session } = useSession();
+  const creditsQuery = api.chat.getCredits.useQuery(undefined, {
+    enabled: !isGuest,
+  });
+
+  const handleLogout = () => {
+    void signOut({ callbackUrl: "/" });
+  };
+
+  if (SHOW_COMING_SOON) {
+    return (
+      <KalkulatorComingSoon
+        isGuest={isGuest}
+        session={session}
+        creditsQuery={creditsQuery}
+        handleLogout={handleLogout}
+      />
+    );
+  }
+
+  return <OriginalKalkulatorWorkspace isGuest={isGuest} />;
+}
+
+export function OriginalKalkulatorWorkspace({ isGuest = false }: KalkulatorShellProps) {
   const { data: session } = useSession();
   const [description, setDescription] = useState("");
   const [result, setResult] = useState<TaxCalculationResult | null>(null);
