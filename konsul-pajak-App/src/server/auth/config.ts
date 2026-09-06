@@ -8,6 +8,14 @@ import { verifyOTP } from "nvn/lib/otp";
 
 import { db } from "../db";
 import { env } from "../../env";
+import dns from "node:dns";
+
+// Ensure Node prioritizes IPv4 over IPv6 to avoid Alpine musl EAI_AGAIN lookup timeouts
+try {
+  dns.setDefaultResultOrder?.("ipv4first");
+} catch {
+  // Ignored in edge or non-node runtimes
+}
 
 /**
  * Module augmentation untuk `next-auth`. Mengizinkan kita menambah properti custom
@@ -26,6 +34,7 @@ declare module "next-auth" {
  * Opsi konfigurasi NextAuth.js
  */
 export const authConfig: NextAuthConfig = {
+  secret: env.AUTH_SECRET ?? env.NEXTAUTH_SECRET,
   trustHost: true,
   session: {
     strategy: "jwt",

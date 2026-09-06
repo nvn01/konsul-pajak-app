@@ -13,8 +13,10 @@ export const env = createEnv({
       .default("development"),
     NEXTAUTH_SECRET:
       process.env.NODE_ENV === "production"
-        ? z.string()
+        ? z.string().optional()
         : z.string().optional(),
+    AUTH_SECRET: z.string().optional(),
+    AUTH_TRUST_HOST: z.string().optional(),
     NEXTAUTH_URL: z.preprocess(
       (str) =>
         process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : str,
@@ -50,6 +52,8 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+    AUTH_SECRET: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+    AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
 
     // --- Google OAuth ---
