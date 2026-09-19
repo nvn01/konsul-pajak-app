@@ -432,13 +432,13 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
   }, [isCalculating, result]);
 
   const handleCalculate = async () => {
-    if (!description.trim()) return;
-
     // Guest: block if already used
     if (isGuest && guestCalculated) {
       setShowSignupPrompt(true);
       return;
     }
+
+    if (!description.trim()) return;
 
     // Auth: check credits
     if (!isGuest && creditsQuery.data && creditsQuery.data.credits <= 0) {
@@ -454,7 +454,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
         setResult(guestResult);
         setGuestCalculated(true);
         localStorage.setItem("kp_guest_calc", "1");
-        setTimeout(() => setShowSignupPrompt(true), 2000);
+        setTimeout(() => setShowSignupPrompt(true), 1500);
       } else {
         const authResult = await calculateMutation.mutateAsync({
           description: description.trim(),
@@ -845,39 +845,71 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
 
                   {/* Textarea */}
                   <form onSubmit={handleSubmit}>
-                    <Textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Contoh: Saya karyawan dengan gaji Rp 10 juta/bulan. Berapa PPh 21 saya?"
-                      className="min-h-[100px] max-h-[160px] resize-none border border-border rounded-xl bg-background px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground/60"
-                      disabled={isCalculating || (isGuest && guestCalculated)}
-                    />
+                    <div
+                      onClick={() => {
+                        if (isGuest && guestCalculated) {
+                          setShowSignupPrompt(true);
+                        }
+                      }}
+                      className={isGuest && guestCalculated ? "cursor-pointer" : ""}
+                    >
+                      <Textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder={
+                          isGuest && guestCalculated
+                            ? "Anda telah menggunakan 1x kesempatan coba gratis. Masuk untuk menghitung kembali..."
+                            : "Contoh: Saya karyawan dengan gaji Rp 10 juta/bulan. Berapa PPh 21 saya?"
+                        }
+                        className={`min-h-[100px] max-h-[160px] resize-none border border-border rounded-xl bg-background px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground/60 ${
+                          isGuest && guestCalculated
+                            ? "cursor-pointer select-none opacity-80"
+                            : ""
+                        }`}
+                        disabled={isCalculating || (isGuest && guestCalculated)}
+                      />
+                    </div>
 
                     {/* Action Buttons */}
                     <div className="mt-3">
-                      <button
-                        type="submit"
-                        disabled={
-                          isCalculating ||
-                          !description.trim() ||
-                          (isGuest && guestCalculated)
-                        }
-                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-sidebar-primary px-5 py-2.5 text-sm font-semibold text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                      >
-                        {isCalculating ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Menghitung...
-                          </>
-                        ) : (
-                          <>
-                            <Calculator className="h-4 w-4" />
-                            Hitung Pajak
-                          </>
-                        )}
-                      </button>
+                      {isGuest && guestCalculated ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowSignupPrompt(true)}
+                          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-sidebar-primary px-5 py-2.5 text-sm font-semibold text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+                        >
+                          <Calculator className="h-4 w-4" />
+                          Masuk untuk Menghitung Pajak
+                        </button>
+                      ) : (
+                        <button
+                          type="submit"
+                          disabled={
+                            isCalculating ||
+                            !description.trim()
+                          }
+                          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-sidebar-primary px-5 py-2.5 text-sm font-semibold text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          {isCalculating ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Menghitung...
+                            </>
+                          ) : (
+                            <>
+                              <Calculator className="h-4 w-4" />
+                              Hitung Pajak
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </form>
+
+                  {/* Inline Banner for Guest when trial limit reached */}
+                  {isGuest && guestCalculated && !isCalculating && (
+                    <SignupPrompt variant="banner" feature="kalkulator" />
+                  )}
                 </div>
 
                 {/* ── Follow-Up Questions ── */}
@@ -961,8 +993,14 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                     {/* Recalculate button */}
                     <button
                       type="button"
-                      onClick={() => void handleFollowUpRecalculate()}
-                      disabled={isCalculating || Object.keys(followUpAnswers).length === 0 || isGuest}
+                      onClick={() => {
+                        if (isGuest) {
+                          setShowSignupPrompt(true);
+                          return;
+                        }
+                        void handleFollowUpRecalculate();
+                      }}
+                      disabled={isCalculating || Object.keys(followUpAnswers).length === 0}
                       className="w-full mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-3 text-sm font-bold text-white shadow-md transition-all hover:from-amber-600 hover:to-orange-600 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer"
                     >
                       {isCalculating ? (
@@ -973,7 +1011,9 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                       ) : (
                         <>
                           <RefreshCw className="h-4 w-4" />
-                          Hitung Ulang dengan Info Tambahan
+                          {isGuest
+                            ? "Masuk untuk Menghitung Ulang"
+                            : "Hitung Ulang dengan Info Tambahan"}
                           {Object.keys(followUpAnswers).length > 0 && (
                             <span className="inline-flex items-center rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold">
                               {Object.keys(followUpAnswers).length} dipilih
@@ -996,8 +1036,14 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                         <button
                           key={i}
                           type="button"
-                          onClick={() => handleExampleClick(prompt)}
-                          disabled={isCalculating || (isGuest && guestCalculated)}
+                          onClick={() => {
+                            if (isGuest && guestCalculated) {
+                              setShowSignupPrompt(true);
+                              return;
+                            }
+                            handleExampleClick(prompt);
+                          }}
+                          disabled={isCalculating}
                           className="text-left rounded-xl border border-border bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted hover:border-sidebar-primary/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {prompt.length > 100
@@ -1063,6 +1109,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
       {showSignupPrompt && isGuest && (
         <SignupPrompt
           variant="modal"
+          feature="kalkulator"
           onDismiss={() => setShowSignupPrompt(false)}
         />
       )}
