@@ -210,7 +210,7 @@ export default function DirektoriPage() {
               <DropdownMenuItem className="cursor-pointer" asChild>
                 <Link href="/kalkulator">
                   <Calculator className="mr-2 h-4 w-4" />
-                  <span>Kalkulator (Development)</span>
+                  <span>Kalkulator Pajak</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
