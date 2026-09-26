@@ -63,6 +63,11 @@ export type TaxCalculationResult = {
   followUpQuestions: FollowUpQuestion[];
 };
 
+export type CalculationHistoryTurn = {
+  userPrompt: string;
+  modelResultJson: string;
+};
+
 // ---------------------------------------------------------------------------
 // System prompt: comprehensive tax calculator instruction
 // ---------------------------------------------------------------------------
@@ -148,6 +153,11 @@ ATURAN FOLLOW-UP:
 4. Jika prompt sudah mengandung "Informasi tambahan:" artinya pengguna sudah menjawab pertanyaan sebelumnya, JANGAN tanyakan lagi parameter yang sudah dijawab.
 5. Maksimal 4 pertanyaan.
 
+## ATURAN KONSISTENSI FOLLOW-UP (MULTI-TURN)
+1. Jika terdapat riwayat percakapan/perhitungan sebelumnya dalam sesi ini (multi-turn), kamu **WAJIB mempertahankan seluruh asumsi, metode perhitungan, biaya pengurang, status PTKP (misalnya TK/0), periode, dan dasar hukum** yang sudah kamu gunakan pada hasil perhitungan sebelumnya, KECUALI parameter yang secara eksplisit diubah atau dijawab oleh pengguna pada informasi tambahan/follow-up terbaru.
+2. **JANGAN** mengubah asumsi secara tiba-tiba di antara perhitungan awal dan follow-up (contoh: jika di perhitungan awal kamu sudah mengasumsikan status TK/0 atau metode TER/Progresif tertentu, dan di follow-up tidak ada perubahan atas parameter tersebut, kamu WAJIB tetap menggunakan asumsi TK/0 dan metode yang sama persis).
+3. Pastikan langkah perhitungan, DPP, dan komponen pengurang tetap konsisten dengan perhitungan sebelumnya, dan hanya sesuaikan bagian yang terdampak langsung oleh informasi tambahan dari pengguna.
+
 Parameter yang umum perlu ditanyakan:
 - **Status PTKP** (untuk PPh 21): TK/0, TK/1, TK/2, TK/3, K/0, K/1, K/2, K/3
 - **Kepemilikan NPWP** (mempengaruhi tarif): Ya atau Tidak
@@ -209,16 +219,39 @@ Database berisi 40 Undang-Undang perpajakan Indonesia, termasuk:
 // ---------------------------------------------------------------------------
 export async function calculateTax(
   description: string,
+  history: CalculationHistoryTurn[] = [],
 ): Promise<TaxCalculationResult> {
   try {
+    const contents: Array<{
+      role: "user" | "model";
+      parts: Array<{ text: string }>;
+    }> = [];
+
+    for (const turn of history) {
+      if (turn.userPrompt.trim() && turn.modelResultJson.trim()) {
+        contents.push({
+          role: "user",
+          parts: [{ text: turn.userPrompt }],
+        });
+        contents.push({
+          role: "model",
+          parts: [
+            {
+              text: `<<<KALKULASI>>>\n${turn.modelResultJson}\n<<<END_KALKULASI>>>`,
+            },
+          ],
+        });
+      }
+    }
+
+    contents.push({
+      role: "user",
+      parts: [{ text: description }],
+    });
+
     const response = await getAI().models.generateContent({
       model: MODEL_ID,
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: description }],
-        },
-      ],
+      contents,
       config: {
         systemInstruction: CALCULATOR_SYSTEM_PROMPT,
         temperature: 0.1,

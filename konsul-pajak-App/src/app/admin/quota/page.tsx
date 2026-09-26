@@ -30,6 +30,21 @@ export default function AdminQuotaPage() {
     })
   }
 
+  // ─── Guest IPs (Unauthenticated Limit & Block Tracking) ──
+  const [guestIpPage, setGuestIpPage] = useState(1)
+  const [blockedIpsOnly, setBlockedIpsOnly] = useState(false)
+  const guestIpsQuery = api.admin.guestBlockedIps.useQuery({
+    page: guestIpPage,
+    limit: 10,
+    blockedOnly: blockedIpsOnly,
+  })
+  const unblockGuestIpMutation = api.admin.unblockGuestIp.useMutation({
+    onSuccess: () => guestIpsQuery.refetch(),
+  })
+  const resetAllGuestIpsMutation = api.admin.resetAllGuestIps.useMutation({
+    onSuccess: () => guestIpsQuery.refetch(),
+  })
+
   // ─── User Credits ──────────────────────────────────
   const [userPage, setUserPage] = useState(1)
   const [flaggedOnly, setFlaggedOnly] = useState(false)
@@ -50,7 +65,11 @@ export default function AdminQuotaPage() {
 
   const handleSaveConfig = () => {
     if (!config) return
-    updateConfigMutation.mutate(config)
+    updateConfigMutation.mutate(config, {
+      onSuccess: () => {
+        void guestIpsQuery.refetch()
+      },
+    })
   }
 
   const handleAdjustCredits = (userId: string) => {
@@ -290,6 +309,156 @@ export default function AdminQuotaPage() {
                     type="button"
                     onClick={() => setUserPage((p) => Math.min(userCreditsQuery.data?.totalPages ?? 1, p + 1))}
                     disabled={userPage === (userCreditsQuery.data?.totalPages ?? 1)}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs disabled:opacity-40 cursor-pointer"
+                  >
+                    Selanjutnya →
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ─── Guest Blocked IPs Table ───────────────────────── */}
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-foreground">
+                Daftar IP Guest (Tanpa Login) & Status Blokir
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Pantau alamat IP pengunjung yang belum login dan terkena batas kuota percakapan/pesan/kalkulator.
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={blockedIpsOnly}
+                  onChange={(e) => {
+                    setBlockedIpsOnly(e.target.checked)
+                    setGuestIpPage(1)
+                  }}
+                  className="rounded"
+                />
+                Hanya IP yang terblokir
+              </label>
+              <button
+                type="button"
+                onClick={() => resetAllGuestIpsMutation.mutate()}
+                disabled={
+                  resetAllGuestIpsMutation.isPending ||
+                  (guestIpsQuery.data?.total ?? 0) === 0
+                }
+                className="rounded-lg border border-border bg-background hover:bg-muted px-3 py-1.5 text-xs font-medium text-foreground transition-colors disabled:opacity-40 cursor-pointer"
+              >
+                {resetAllGuestIpsMutation.isPending
+                  ? "Mereset..."
+                  : "↺ Reset Semua IP"}
+              </button>
+            </div>
+          </div>
+
+          {guestIpsQuery.isLoading ? (
+            <p className="text-sm text-muted-foreground">Memuat data IP guest...</p>
+          ) : (guestIpsQuery.data?.items.length ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              {blockedIpsOnly
+                ? "Tidak ada IP guest yang sedang terblokir saat ini."
+                : "Belum ada aktivitas IP guest yang tercatat."}
+            </p>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      <th className="pb-2 font-medium text-muted-foreground">Alamat IP</th>
+                      <th className="pb-2 font-medium text-muted-foreground">Percakapan & Pesan Chat</th>
+                      <th className="pb-2 font-medium text-muted-foreground">Kalkulator</th>
+                      <th className="pb-2 font-medium text-muted-foreground">Aktivitas Terakhir</th>
+                      <th className="pb-2 font-medium text-muted-foreground">Status</th>
+                      <th className="pb-2 font-medium text-muted-foreground">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {guestIpsQuery.data?.items.map((item) => (
+                      <tr key={item.ip} className="border-b border-border/50">
+                        <td className="py-3 font-mono font-medium text-foreground">
+                          {item.ip}
+                        </td>
+                        <td className="py-3">
+                          <div className="font-mono text-xs text-foreground">
+                            {item.conversationsUsed} / {guestIpsQuery.data?.guestConversationLimit ?? 1} percakapan
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            Total {item.totalChatMessages} pesan (maks {item.maxMessagesInConv}/{guestIpsQuery.data?.guestMessageLimit ?? 5} per chat)
+                          </div>
+                        </td>
+                        <td className="py-3 font-mono text-xs">
+                          {item.calculationsUsed} / {guestIpsQuery.data?.guestConversationLimit ?? 1}x
+                        </td>
+                        <td className="py-3 text-xs text-muted-foreground">
+                          {new Date(item.lastActiveAt).toLocaleString("id-ID")}
+                        </td>
+                        <td className="py-3">
+                          {item.isBlocked ? (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive px-2 py-0.5 text-xs font-medium">
+                                🚫 Terblokir
+                              </span>
+                              {item.blockReasons.map((reason) => (
+                                <span
+                                  key={reason}
+                                  className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+                                >
+                                  {reason}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Aktif</span>
+                          )}
+                        </td>
+                        <td className="py-3">
+                          <button
+                            type="button"
+                            onClick={() => unblockGuestIpMutation.mutate({ ip: item.ip })}
+                            disabled={unblockGuestIpMutation.isPending}
+                            className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-primary hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
+                            title="Buka blokir dan reset kuota IP ini"
+                          >
+                            🔓 Buka Blokir
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {(guestIpsQuery.data?.totalPages ?? 1) > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setGuestIpPage((p) => Math.max(1, p - 1))}
+                    disabled={guestIpPage === 1}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs disabled:opacity-40 cursor-pointer"
+                  >
+                    ← Sebelumnya
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    Halaman {guestIpPage} dari {guestIpsQuery.data?.totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setGuestIpPage((p) =>
+                        Math.min(guestIpsQuery.data?.totalPages ?? 1, p + 1),
+                      )
+                    }
+                    disabled={guestIpPage === (guestIpsQuery.data?.totalPages ?? 1)}
                     className="rounded-lg border border-border px-3 py-1.5 text-xs disabled:opacity-40 cursor-pointer"
                   >
                     Selanjutnya →

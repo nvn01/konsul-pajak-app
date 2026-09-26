@@ -56,6 +56,15 @@ export const kalkulatorRouter = createTRPCRouter({
           .string()
           .min(10, 'Deskripsi terlalu pendek (minimal 10 karakter)')
           .max(3000, 'Deskripsi terlalu panjang'),
+        history: z
+          .array(
+            z.object({
+              userPrompt: z.string(),
+              modelResultJson: z.string(),
+            }),
+          )
+          .max(10)
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -77,7 +86,10 @@ export const kalkulatorRouter = createTRPCRouter({
         });
       }
 
-      const result = await calculateTax(input.description.trim());
+      const result = await calculateTax(
+        input.description.trim(),
+        input.history ?? [],
+      );
 
       // Record guest usage in DB
       await ctx.db.guestUsage.create({
@@ -99,6 +111,15 @@ export const kalkulatorRouter = createTRPCRouter({
           .string()
           .min(10, 'Deskripsi terlalu pendek (minimal 10 karakter)')
           .max(3000, 'Deskripsi terlalu panjang'),
+        history: z
+          .array(
+            z.object({
+              userPrompt: z.string(),
+              modelResultJson: z.string(),
+            }),
+          )
+          .max(10)
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -161,7 +182,10 @@ export const kalkulatorRouter = createTRPCRouter({
       });
 
       // ── Call AI calculator ────────────────────────────
-      const result = await calculateTax(trimmedDescription);
+      const result = await calculateTax(
+        trimmedDescription,
+        input.history ?? [],
+      );
 
       // ── Augment sources with Peraturan URLs ───────────
       const augmentedDasarHukum: SourceCitation[] = await Promise.all(

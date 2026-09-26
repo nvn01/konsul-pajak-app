@@ -425,4 +425,149 @@ export const adminRouter = createTRPCRouter({
         },
       });
     }),
+
+  guestBlockedIps: adminProcedure
+    .input(
+      z
+        .object({
+          page: z.number().min(1).default(1),
+          limit: z.number().default(10),
+          blockedOnly: z.boolean().default(false),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      try {
+        await ctx.db.$executeRawUnsafe(
+          `ALTER TABLE "QuotaConfig" ADD COLUMN IF NOT EXISTS "guestConversationLimit" INTEGER NOT NULL DEFAULT 1;`,
+        );
+      } catch {
+        // Ignore if column already exists
+      }
+
+      const page = input?.page ?? 1;
+      const limit = input?.limit ?? 10;
+      const blockedOnly = input?.blockedOnly ?? false;
+
+      const [config, allUsages] = await Promise.all([
+        ctx.db.quotaConfig.findFirst({ where: { id: 1 } }),
+        ctx.db.guestUsage.findMany({
+          orderBy: { createdAt: "desc" },
+        }),
+      ]);
+
+      const guestConversationLimit = config?.guestConversationLimit ?? 1;
+      const guestMessageLimit = config?.guestMessageLimit ?? 5;
+
+      const ipMap = new Map<
+        string,
+        {
+          ip: string;
+          conversations: Map<string, number>;
+          totalChatMessages: number;
+          calculationsUsed: number;
+          lastActiveAt: Date;
+        }
+      >();
+
+      for (const usage of allUsages) {
+        let entry = ipMap.get(usage.ip);
+        if (!entry) {
+          entry = {
+            ip: usage.ip,
+            conversations: new Map<string, number>(),
+            totalChatMessages: 0,
+            calculationsUsed: 0,
+            lastActiveAt: usage.createdAt,
+          };
+          ipMap.set(usage.ip, entry);
+        }
+
+        if (usage.createdAt > entry.lastActiveAt) {
+          entry.lastActiveAt = usage.createdAt;
+        }
+
+        if (usage.actionType === "calculation") {
+          entry.calculationsUsed += 1;
+        } else if (usage.actionType.startsWith("chat")) {
+          entry.totalChatMessages += 1;
+          const convKey =
+            usage.actionType === "chat" ? `legacy:${usage.id}` : usage.actionType;
+          entry.conversations.set(
+            convKey,
+            (entry.conversations.get(convKey) ?? 0) + 1,
+          );
+        }
+      }
+
+      const aggregated = Array.from(ipMap.values()).map((entry) => {
+        const conversationsUsed = entry.conversations.size;
+        const maxMessagesInConv =
+          entry.conversations.size > 0
+            ? Math.max(...Array.from(entry.conversations.values()))
+            : 0;
+
+        const blockReasons: string[] = [];
+        if (conversationsUsed >= guestConversationLimit) {
+          blockReasons.push("Batas Percakapan");
+        }
+        if (maxMessagesInConv >= guestMessageLimit) {
+          blockReasons.push("Batas Pesan");
+        }
+        if (entry.calculationsUsed >= guestConversationLimit) {
+          blockReasons.push("Batas Kalkulator");
+        }
+
+        const isBlocked = blockReasons.length > 0;
+
+        return {
+          ip: entry.ip,
+          conversationsUsed,
+          totalChatMessages: entry.totalChatMessages,
+          maxMessagesInConv,
+          calculationsUsed: entry.calculationsUsed,
+          lastActiveAt: entry.lastActiveAt,
+          isBlocked,
+          blockReasons,
+        };
+      });
+
+      const filtered = blockedOnly
+        ? aggregated.filter((item) => item.isBlocked)
+        : aggregated;
+
+      filtered.sort((a, b) => {
+        if (a.isBlocked !== b.isBlocked) {
+          return a.isBlocked ? -1 : 1;
+        }
+        return b.lastActiveAt.getTime() - a.lastActiveAt.getTime();
+      });
+
+      const total = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const items = filtered.slice((page - 1) * limit, page * limit);
+
+      return {
+        items,
+        total,
+        totalPages,
+        page,
+        guestConversationLimit,
+        guestMessageLimit,
+      };
+    }),
+
+  unblockGuestIp: adminProcedure
+    .input(z.object({ ip: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.guestUsage.deleteMany({
+        where: { ip: input.ip },
+      });
+      return { success: true };
+    }),
+
+  resetAllGuestIps: adminProcedure.mutation(async ({ ctx }) => {
+    await ctx.db.guestUsage.deleteMany({});
+    return { success: true };
+  }),
 });

@@ -390,6 +390,10 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
   const { data: session } = useSession();
   const [description, setDescription] = useState("");
   const [result, setResult] = useState<TaxCalculationResult | null>(null);
+  const [calculationHistory, setCalculationHistory] = useState<
+    Array<{ userPrompt: string; modelResultJson: string }>
+  >([]);
+  const [lastSubmittedPrompt, setLastSubmittedPrompt] = useState("");
 
   // Guest state — use server quota config instead of hardcoded localStorage lock
   const [guestForceBlocked, setGuestForceBlocked] = useState(false);
@@ -452,7 +456,8 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
       return;
     }
 
-    if (!description.trim()) return;
+    const trimmedDesc = description.trim();
+    if (!trimmedDesc) return;
 
     // Auth: check credits
     if (!isGuest && creditsQuery.data && creditsQuery.data.credits <= 0) {
@@ -460,12 +465,33 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
       return;
     }
 
+    // If the user edited the existing prompt in-place while a result is shown, preserve prior turn context
+    const isRefiningSameScenario =
+      result !== null &&
+      lastSubmittedPrompt.length > 0 &&
+      trimmedDesc.startsWith(
+        lastSubmittedPrompt.slice(0, Math.min(20, lastSubmittedPrompt.length)),
+      );
+
+    const historyToUse = isRefiningSameScenario
+      ? [
+          ...calculationHistory,
+          {
+            userPrompt: lastSubmittedPrompt,
+            modelResultJson: JSON.stringify(result),
+          },
+        ].slice(-10)
+      : [];
+
     try {
       if (isGuest) {
         const guestResult = await guestCalculateMutation.mutateAsync({
-          description: description.trim(),
+          description: trimmedDesc,
+          history: historyToUse,
         });
         setResult(guestResult);
+        setCalculationHistory(historyToUse);
+        setLastSubmittedPrompt(trimmedDesc);
         const updatedQuota = await guestQuotaQuery.refetch();
         if (
           updatedQuota.data &&
@@ -477,9 +503,12 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
         }
       } else {
         const authResult = await calculateMutation.mutateAsync({
-          description: description.trim(),
+          description: trimmedDesc,
+          history: historyToUse,
         });
         setResult(authResult.result);
+        setCalculationHistory(historyToUse);
+        setLastSubmittedPrompt(trimmedDesc);
         // Invalidate credits and history
         void creditsQuery.refetch();
         void historyQuery.refetch();
@@ -513,6 +542,8 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
   const handleReset = () => {
     setResult(null);
     setDescription("");
+    setCalculationHistory([]);
+    setLastSubmittedPrompt("");
     setFollowUpAnswers({});
     setSidebarOpen(false);
   };
@@ -520,6 +551,8 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
   const handleLoadFromHistory = (historyItem: any) => {
     setResult(historyItem.resultJson as TaxCalculationResult);
     setDescription(historyItem.inputText);
+    setCalculationHistory([]);
+    setLastSubmittedPrompt(historyItem.inputText);
     setShowHistory(false);
     setSidebarOpen(false);
   };
@@ -550,6 +583,11 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
   const handleFollowUpRecalculate = async () => {
     if (!result || Object.keys(followUpAnswers).length === 0) return;
 
+    if (isGuest && guestCalculated) {
+      setShowSignupPrompt(true);
+      return;
+    }
+
     // Build the enriched prompt
     const questions = result.followUpQuestions;
     const additionalLines: string[] = [];
@@ -561,22 +599,49 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
       }
     }
 
+    const previousPrompt = lastSubmittedPrompt || description.trim();
+    const nextHistory = [
+      ...calculationHistory,
+      {
+        userPrompt: previousPrompt,
+        modelResultJson: JSON.stringify(result),
+      },
+    ].slice(-10);
+
     const enrichedPrompt = `${description.trim()}\n\nInformasi tambahan:\n${additionalLines.map((l) => `- ${l}`).join("\n")}`;
 
     // Update the prompt box with enriched text
     setDescription(enrichedPrompt);
     setFollowUpAnswers({});
 
-    // Re-calculate
+    // Re-calculate with full multi-turn history so AI keeps prior assumptions
     try {
       if (isGuest) {
-        // Guest can't recalculate (already used their free try)
+        const guestResult = await guestCalculateMutation.mutateAsync({
+          description: enrichedPrompt,
+          history: nextHistory,
+        });
+        setResult(guestResult);
+        setCalculationHistory(nextHistory);
+        setLastSubmittedPrompt(enrichedPrompt);
+        const updatedQuota = await guestQuotaQuery.refetch();
+        if (
+          updatedQuota.data &&
+          updatedQuota.data.calculationsUsed >=
+            updatedQuota.data.guestCalculationLimit
+        ) {
+          setGuestForceBlocked(true);
+          setTimeout(() => setShowSignupPrompt(true), 1500);
+        }
         return;
       }
       const authResult = await calculateMutation.mutateAsync({
         description: enrichedPrompt,
+        history: nextHistory,
       });
       setResult(authResult.result);
+      setCalculationHistory(nextHistory);
+      setLastSubmittedPrompt(enrichedPrompt);
       void creditsQuery.refetch();
       void historyQuery.refetch();
     } catch (error: any) {
@@ -585,7 +650,13 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
         error?.message?.includes?.("Kredit") ||
         error?.data?.code === "FORBIDDEN"
       ) {
-        setShowCreditsExhausted(true);
+        if (isGuest) {
+          setGuestForceBlocked(true);
+          void guestQuotaQuery.refetch();
+          setShowSignupPrompt(true);
+        } else {
+          setShowCreditsExhausted(true);
+        }
       }
     }
   };
@@ -1015,7 +1086,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                     <button
                       type="button"
                       onClick={() => {
-                        if (isGuest) {
+                        if (isGuest && guestCalculated) {
                           setShowSignupPrompt(true);
                           return;
                         }
@@ -1032,7 +1103,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                       ) : (
                         <>
                           <RefreshCw className="h-4 w-4" />
-                          {isGuest
+                          {isGuest && guestCalculated
                             ? "Masuk untuk Menghitung Ulang"
                             : "Hitung Ulang dengan Info Tambahan"}
                           {Object.keys(followUpAnswers).length > 0 && (
