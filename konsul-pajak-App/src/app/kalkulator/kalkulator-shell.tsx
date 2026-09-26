@@ -391,20 +391,34 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
   const [description, setDescription] = useState("");
   const [result, setResult] = useState<TaxCalculationResult | null>(null);
 
-  // Guest state
-  const [guestCalculated, setGuestCalculated] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("kp_guest_calc") === "1";
-    }
-    return false;
-  });
+  // Guest state — use server quota config instead of hardcoded localStorage lock
+  const [guestForceBlocked, setGuestForceBlocked] = useState(false);
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [showCreditsExhausted, setShowCreditsExhausted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("kp_guest_calc");
+    }
+  }, []);
 
   // Credit info for logged-in users
   const creditsQuery = api.chat.getCredits.useQuery(undefined, {
     enabled: !isGuest,
   });
+
+  // Guest quota info from server
+  const guestQuotaQuery = api.kalkulator.getGuestQuota.useQuery(undefined, {
+    enabled: isGuest,
+    refetchOnWindowFocus: true,
+  });
+
+  const guestCalculated =
+    isGuest &&
+    (guestForceBlocked ||
+      (guestQuotaQuery.data !== undefined &&
+        guestQuotaQuery.data.calculationsUsed >=
+          guestQuotaQuery.data.guestCalculationLimit));
 
   const calculateMutation = api.kalkulator.calculate.useMutation();
   const guestCalculateMutation = api.kalkulator.guestCalculate.useMutation();
@@ -432,7 +446,7 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
   }, [isCalculating, result]);
 
   const handleCalculate = async () => {
-    // Guest: block if already used
+    // Guest: block if already reached limit
     if (isGuest && guestCalculated) {
       setShowSignupPrompt(true);
       return;
@@ -452,9 +466,15 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
           description: description.trim(),
         });
         setResult(guestResult);
-        setGuestCalculated(true);
-        localStorage.setItem("kp_guest_calc", "1");
-        setTimeout(() => setShowSignupPrompt(true), 1500);
+        const updatedQuota = await guestQuotaQuery.refetch();
+        if (
+          updatedQuota.data &&
+          updatedQuota.data.calculationsUsed >=
+            updatedQuota.data.guestCalculationLimit
+        ) {
+          setGuestForceBlocked(true);
+          setTimeout(() => setShowSignupPrompt(true), 1500);
+        }
       } else {
         const authResult = await calculateMutation.mutateAsync({
           description: description.trim(),
@@ -471,8 +491,8 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
         error?.data?.code === "FORBIDDEN"
       ) {
         if (isGuest) {
-          setGuestCalculated(true);
-          localStorage.setItem("kp_guest_calc", "1");
+          setGuestForceBlocked(true);
+          void guestQuotaQuery.refetch();
           setShowSignupPrompt(true);
         } else {
           setShowCreditsExhausted(true);
@@ -632,11 +652,12 @@ export function KalkulatorShell({ isGuest = false }: KalkulatorShellProps) {
                       <p className="text-muted-foreground text-xs leading-none">
                         {session?.user?.email}
                       </p>
-                      {creditsQuery.data && (
+                      {/* Hidden for now: credit information is temporarily disabled. */}
+                      {/* {creditsQuery.data && (
                         <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-sidebar-primary bg-sidebar-primary/10 px-2.5 py-1 rounded w-fit font-semibold">
                           <span>Sisa Kredit: {creditsQuery.data.credits} pesan</span>
                         </div>
-                      )}
+                      )} */}
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />

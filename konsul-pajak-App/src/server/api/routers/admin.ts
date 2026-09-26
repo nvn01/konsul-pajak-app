@@ -299,6 +299,13 @@ export const adminRouter = createTRPCRouter({
   // ─── Quota Management ─────────────────────────────────
 
   quotaConfig: adminProcedure.query(async ({ ctx }) => {
+    try {
+      await ctx.db.$executeRawUnsafe(
+        `ALTER TABLE "QuotaConfig" ADD COLUMN IF NOT EXISTS "guestConversationLimit" INTEGER NOT NULL DEFAULT 1;`
+      );
+    } catch {
+      // Ignore if column already exists
+    }
     // Upsert: create default config if it doesn't exist
     const config = await ctx.db.quotaConfig.upsert({
       where: { id: 1 },
@@ -312,12 +319,22 @@ export const adminRouter = createTRPCRouter({
     .input(
       z.object({
         defaultCredits: z.number().min(1).max(10000),
-        guestMessageLimit: z.number().min(0).max(10),
+        guestConversationLimit: z.number().min(0).max(1000),
+        guestMessageLimit: z.number().min(0).max(1000),
         spamTimeWindowSec: z.number().min(5).max(300),
         minMessageLength: z.number().min(1).max(100),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      try {
+        await ctx.db.$executeRawUnsafe(
+          `ALTER TABLE "QuotaConfig" ADD COLUMN IF NOT EXISTS "guestConversationLimit" INTEGER NOT NULL DEFAULT 1;`
+        );
+      } catch {
+        // Ignore if column already exists
+      }
+      // Clear previous guest usage records so updated guest limits take effect cleanly
+      await ctx.db.guestUsage.deleteMany({});
       return ctx.db.quotaConfig.upsert({
         where: { id: 1 },
         create: { id: 1, ...input },

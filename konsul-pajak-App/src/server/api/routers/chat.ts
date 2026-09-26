@@ -11,13 +11,60 @@ const chatIdInput = z.object({
 // ---------------------------------------------------------------------------
 // Helper: Load quota config (singleton) with fallback defaults
 // ---------------------------------------------------------------------------
+let quotaColumnEnsured = false;
 async function getQuotaConfig(db: any) {
+  if (!quotaColumnEnsured) {
+    try {
+      await db.$executeRawUnsafe(
+        `ALTER TABLE "QuotaConfig" ADD COLUMN IF NOT EXISTS "guestConversationLimit" INTEGER NOT NULL DEFAULT 1;`
+      );
+    } catch {
+      // Ignore if column already exists
+    }
+    quotaColumnEnsured = true;
+  }
   const config = await db.quotaConfig.findFirst({ where: { id: 1 } });
   return {
     defaultCredits: config?.defaultCredits ?? 20,
-    guestMessageLimit: config?.guestMessageLimit ?? 1,
+    guestConversationLimit: config?.guestConversationLimit ?? 1,
+    guestMessageLimit: config?.guestMessageLimit ?? 5,
     spamTimeWindowSec: config?.spamTimeWindowSec ?? 30,
     minMessageLength: config?.minMessageLength ?? 10,
+  };
+}
+
+async function getGuestChatUsage(db: any, ipAddress: string, conversationId?: string) {
+  const chatUsages = await db.guestUsage.findMany({
+    where: {
+      ip: ipAddress,
+      actionType: { startsWith: 'chat' },
+    },
+    select: { id: true, actionType: true },
+  });
+
+  const distinctConversations = new Set<string>();
+  let messagesInConversation = 0;
+  const targetActionType = conversationId ? `chat:${conversationId}` : null;
+
+  for (const usage of chatUsages) {
+    if (usage.actionType === 'chat') {
+      distinctConversations.add(`legacy:${usage.id}`);
+    } else {
+      distinctConversations.add(usage.actionType);
+      if (targetActionType && usage.actionType === targetActionType) {
+        messagesInConversation += 1;
+      }
+    }
+  }
+
+  const isExistingConversation = targetActionType
+    ? distinctConversations.has(targetActionType)
+    : false;
+
+  return {
+    conversationsUsed: distinctConversations.size,
+    messagesInConversation,
+    isExistingConversation,
   };
 }
 
@@ -224,48 +271,99 @@ export const chatRouter = createTRPCRouter({
     };
   }),
 
-  // ─── Guest Message (no auth required, single-turn, no DB save) ─────
+  // ─── Guest Quota Status ────────────────────────────────
+  getGuestQuota: publicProcedure
+    .input(
+      z
+        .object({
+          conversationId: z.string().optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const ipAddress = ctx.ip ?? '127.0.0.1';
+      const quotaConfig = await getQuotaConfig(ctx.db);
+      const usage = await getGuestChatUsage(ctx.db, ipAddress, input?.conversationId);
+
+      return {
+        guestConversationLimit: quotaConfig.guestConversationLimit,
+        guestMessageLimit: quotaConfig.guestMessageLimit,
+        conversationsUsed: usage.conversationsUsed,
+        messagesInConversation: usage.messagesInConversation,
+        isExistingConversation: usage.isExistingConversation,
+      };
+    }),
+
+  // ─── Guest Message (no auth required, multi-turn within conversation, no DB chat save) ─────
   guestMessage: publicProcedure
     .input(
       z.object({
         message: z.string().min(1, 'Pesan tidak boleh kosong').max(2000, 'Pesan terlalu panjang'),
+        conversationId: z.string().min(1).optional(),
+        history: z
+          .array(
+            z.object({
+              role: z.enum(['user', 'assistant']),
+              content: z.string(),
+            }),
+          )
+          .max(20)
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const trimmedMessage = input.message.trim();
       const ipAddress = ctx.ip ?? '127.0.0.1';
+      const conversationId = input.conversationId ?? 'default';
 
-      // Load quota config and check guest message limit by IP address
+      // Load quota config and check guest conversation & message limits by IP address
       const quotaConfig = await getQuotaConfig(ctx.db);
-      const usageCount = await ctx.db.guestUsage.count({
-        where: {
-          ip: ipAddress,
-          actionType: 'chat',
-        },
-      });
+      const usage = await getGuestChatUsage(ctx.db, ipAddress, conversationId);
 
-      if (usageCount >= quotaConfig.guestMessageLimit) {
+      // If starting a new conversation, check conversation limit
+      if (
+        !usage.isExistingConversation &&
+        usage.conversationsUsed >= quotaConfig.guestConversationLimit
+      ) {
         throw new TRPCError({
           code: 'FORBIDDEN',
-          message: 'Batas konsultasi gratis untuk tamu telah habis. Silakan masuk untuk melanjutkan.',
+          message: 'Batas percakapan gratis untuk tamu telah habis. Silakan masuk untuk melanjutkan.',
         });
       }
 
-      // Call AI without any history (single-turn)
-      const { answer, sources } = await answerTaxQuestion(trimmedMessage, []);
+      // Check message limit within the current conversation
+      if (usage.messagesInConversation >= quotaConfig.guestMessageLimit) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Batas pesan gratis dalam percakapan ini telah habis. Silakan masuk untuk melanjutkan.',
+        });
+      }
+
+      // Call AI with conversation history (up to last 10 messages)
+      const messageHistory = (input.history ?? []).slice(-10);
+      const { answer, sources } = await answerTaxQuestion(trimmedMessage, messageHistory);
       const augmentedSources = await augmentSourcesWithUrls(ctx.db, sources);
 
-      // Record guest usage in DB
+      // Record guest usage in DB for this conversation
       await ctx.db.guestUsage.create({
         data: {
           ip: ipAddress,
-          actionType: 'chat',
+          actionType: `chat:${conversationId}`,
         },
       });
+
+      const newMessagesInConversation = usage.messagesInConversation + 1;
+      const newConversationsUsed = usage.isExistingConversation
+        ? usage.conversationsUsed
+        : usage.conversationsUsed + 1;
 
       return {
         answer,
         sources: augmentedSources,
+        messagesInConversation: newMessagesInConversation,
+        guestMessageLimit: quotaConfig.guestMessageLimit,
+        conversationsUsed: newConversationsUsed,
+        guestConversationLimit: quotaConfig.guestConversationLimit,
       };
     }),
 

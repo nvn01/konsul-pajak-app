@@ -116,9 +116,13 @@ export default function PricingPage() {
                   <div className="flex flex-col space-y-1.5">
                     <p className="text-sm font-medium leading-none">{session?.user?.name}</p>
                     <p className="text-muted-foreground text-xs leading-none">{session?.user?.email}</p>
-                    {creditsQuery.data && (
+                    {false && creditsQuery.data && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-sidebar-primary bg-sidebar-primary/10 px-2.5 py-1 rounded w-fit font-semibold">
+                          {/* {creditsQuery.data && (
                       <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-sidebar-primary bg-sidebar-primary/10 px-2.5 py-1 rounded w-fit font-semibold">
                         <span>Sisa Kredit: {creditsQuery.data.credits} pesan</span>
+                      </div>
+                    )} */}
                       </div>
                     )}
                   </div>

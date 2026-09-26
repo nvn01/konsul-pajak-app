@@ -13,6 +13,7 @@ export default function AdminQuotaPage() {
 
   const [config, setConfig] = useState<{
     defaultCredits: number
+    guestConversationLimit: number
     guestMessageLimit: number
     spamTimeWindowSec: number
     minMessageLength: number
@@ -22,6 +23,7 @@ export default function AdminQuotaPage() {
   if (configQuery.data && !config) {
     setConfig({
       defaultCredits: configQuery.data.defaultCredits,
+      guestConversationLimit: configQuery.data.guestConversationLimit ?? 1,
       guestMessageLimit: configQuery.data.guestMessageLimit,
       spamTimeWindowSec: configQuery.data.spamTimeWindowSec,
       minMessageLength: configQuery.data.minMessageLength,
@@ -87,6 +89,20 @@ export default function AdminQuotaPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
+                  Batasan Percakapan Guest
+                </label>
+                <input
+                  type="number"
+                  value={config.guestConversationLimit}
+                  onChange={(e) => setConfig({ ...config, guestConversationLimit: parseInt(e.target.value) || 0 })}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Jumlah percakapan (chat baru/refresh) yang dapat dibuat guest sebelum harus login.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Batas Pesan Guest
                 </label>
                 <input
@@ -95,6 +111,9 @@ export default function AdminQuotaPage() {
                   onChange={(e) => setConfig({ ...config, guestMessageLimit: parseInt(e.target.value) || 0 })}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Jumlah pesan maksimal yang dapat dikirim guest dalam satu percakapan.
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">

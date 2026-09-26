@@ -7,7 +7,7 @@ import { signIn, useSession } from 'next-auth/react'
 function GoogleSignInContent() {
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirectTo') ?? '/chat'
+  const redirectTo = searchParams.get('redirectTo') ?? '/kalkulator'
   const signInStarted = useRef(false)
 
   useEffect(() => {

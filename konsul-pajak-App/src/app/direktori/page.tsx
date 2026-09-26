@@ -166,11 +166,12 @@ export default function DirektoriPage() {
                   <p className="text-muted-foreground text-xs leading-none">
                     {session?.user?.email}
                   </p>
-                  {creditsQuery.data && (
+                  {/* Hidden for now: credit information is temporarily disabled. */}
+                  {/* {creditsQuery.data && (
                     <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-sidebar-primary bg-sidebar-primary/10 px-2.5 py-1 rounded w-fit font-semibold">
                       <span>Sisa Kredit: {creditsQuery.data.credits} pesan</span>
                     </div>
-                  )}
+                  )} */}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

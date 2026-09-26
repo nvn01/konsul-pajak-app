@@ -8,18 +8,47 @@ import { createTRPCRouter, protectedProcedure, publicProcedure } from 'nvn/serve
 // ---------------------------------------------------------------------------
 // Helper: Load quota config (singleton) with fallback defaults
 // ---------------------------------------------------------------------------
+let quotaColumnEnsured = false;
 async function getQuotaConfig(db: any) {
+  if (!quotaColumnEnsured) {
+    try {
+      await db.$executeRawUnsafe(
+        `ALTER TABLE "QuotaConfig" ADD COLUMN IF NOT EXISTS "guestConversationLimit" INTEGER NOT NULL DEFAULT 1;`
+      );
+    } catch {
+      // Ignore if column already exists
+    }
+    quotaColumnEnsured = true;
+  }
   const config = await db.quotaConfig.findFirst({ where: { id: 1 } });
   return {
     defaultCredits: config?.defaultCredits ?? 20,
-    guestMessageLimit: config?.guestMessageLimit ?? 1,
+    guestConversationLimit: config?.guestConversationLimit ?? 1,
+    guestMessageLimit: config?.guestMessageLimit ?? 5,
     spamTimeWindowSec: config?.spamTimeWindowSec ?? 30,
     minMessageLength: config?.minMessageLength ?? 10,
   };
 }
 
 export const kalkulatorRouter = createTRPCRouter({
-  // ─── Guest Calculate (no auth required, single-use, no DB save) ────
+  // ─── Guest Quota Status ─────────────────────────────────────────────
+  getGuestQuota: publicProcedure.query(async ({ ctx }) => {
+    const ipAddress = ctx.ip ?? '127.0.0.1';
+    const quotaConfig = await getQuotaConfig(ctx.db);
+    const usageCount = await ctx.db.guestUsage.count({
+      where: {
+        ip: ipAddress,
+        actionType: 'calculation',
+      },
+    });
+
+    return {
+      guestCalculationLimit: quotaConfig.guestConversationLimit,
+      calculationsUsed: usageCount,
+    };
+  }),
+
+  // ─── Guest Calculate (no auth required, no DB save) ─────────────────
   guestCalculate: publicProcedure
     .input(
       z.object({
@@ -41,7 +70,7 @@ export const kalkulatorRouter = createTRPCRouter({
         },
       });
 
-      if (usageCount >= quotaConfig.guestMessageLimit) {
+      if (usageCount >= quotaConfig.guestConversationLimit) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Batas penggunaan kalkulator untuk tamu telah habis. Silakan masuk untuk melanjutkan.',

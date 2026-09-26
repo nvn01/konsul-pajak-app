@@ -26,7 +26,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/chat");
+      router.replace("/kalkulator");
     }
   }, [status, router]);
 
@@ -84,7 +84,7 @@ export default function LoginPage() {
         router.replace(
           typeof callbackUrl === "string" && callbackUrl.length > 0
             ? callbackUrl
-            : "/chat",
+            : "/kalkulator",
         );
       }
     };
@@ -98,7 +98,7 @@ export default function LoginPage() {
   const handleGoogleLogin = useCallback(() => {
     setIsLoading(true);
     const popup = popupCenter(
-      `/google-signin?redirectTo=${encodeURIComponent("/chat")}`,
+      `/google-signin?redirectTo=${encodeURIComponent("/kalkulator")}`,
       "Login Tanya Pajak AI",
     );
 
@@ -164,8 +164,8 @@ export default function LoginPage() {
         return;
       }
 
-      // Redirect to chat
-      router.push("/chat");
+      // Redirect to kalkulator
+      router.push("/kalkulator");
     } catch (err) {
       setError("Terjadi kesalahan. Silakan coba lagi.");
       setIsLoading(false);

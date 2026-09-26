@@ -75,15 +75,26 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
   const [message, setMessage] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Guest mode state — persist in localStorage so refresh doesn't reset
-  const [guestMessageSent, setGuestMessageSent] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("kp_guest_sent") === "1";
-    }
-    return false;
-  });
+  // Guest mode state — track current conversation ID and message count dynamically
+  const createGuestConvId = useCallback(
+    () =>
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `guest-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    [],
+  );
+  const [guestConversationId, setGuestConversationId] = useState<string>(() => createGuestConvId());
+  const [guestMessagesInCurrentConv, setGuestMessagesInCurrentConv] = useState(0);
+  const [guestForceBlocked, setGuestForceBlocked] = useState(false);
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [showCreditsExhausted, setShowCreditsExhausted] = useState(false);
+
+  // Clean up legacy localStorage lock so admin quota changes work properly
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("kp_guest_sent");
+    }
+  }, []);
 
   // Track the current chat ID independently from the prop
   const [currentChatId, setCurrentChatId] = useState<string | null>(initialChatId);
@@ -123,6 +134,41 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
   const creditsQuery = api.chat.getCredits.useQuery(undefined, {
     enabled: !isGuest,
   });
+
+  // Live guest quota config & usage from server
+  const guestQuotaQuery = api.chat.getGuestQuota.useQuery(
+    { conversationId: guestConversationId },
+    {
+      enabled: isGuest,
+      refetchOnWindowFocus: true,
+    },
+  );
+
+  const guestMessageSent = useMemo(() => {
+    if (!isGuest) return false;
+    if (guestForceBlocked) return true;
+    if (!guestQuotaQuery.data) return false;
+
+    const {
+      guestConversationLimit,
+      guestMessageLimit,
+      conversationsUsed,
+      messagesInConversation,
+      isExistingConversation,
+    } = guestQuotaQuery.data;
+
+    if (guestConversationLimit <= 0 || guestMessageLimit <= 0) return true;
+
+    const currentMsgCount = Math.max(guestMessagesInCurrentConv, messagesInConversation);
+
+    // Within an active conversation, block once message count reaches guestMessageLimit
+    if (currentMsgCount > 0 || isExistingConversation) {
+      return currentMsgCount >= guestMessageLimit;
+    }
+
+    // Starting a new conversation: block if conversationsUsed already reached guestConversationLimit
+    return conversationsUsed >= guestConversationLimit;
+  }, [isGuest, guestForceBlocked, guestQuotaQuery.data, guestMessagesInCurrentConv]);
 
   const hasActiveChat = Boolean(currentChatId);
 
@@ -195,7 +241,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
   const handleSend = useCallback(async () => {
     if (!message.trim()) return;
 
-    // Guest: block if already sent 1 message
+    // Guest: block if conversation limit or message-per-conversation limit reached
     if (isGuest && guestMessageSent) {
       setShowSignupPrompt(true);
       return;
@@ -209,6 +255,10 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
 
     const text = message.trim();
     const tempId = `temp-${Date.now()}`;
+    const guestHistory = optimisticMessages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
     // Optimistic UI: Add user message immediately
     setOptimisticMessages(prev => [...prev, {
@@ -227,7 +277,11 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
     try {
       // ── GUEST MODE ──────────────────────────────────
       if (isGuest) {
-        const result = await guestMessageMutation.mutateAsync({ message: text });
+        const result = await guestMessageMutation.mutateAsync({
+          message: text,
+          conversationId: guestConversationId,
+          history: guestHistory,
+        });
 
         // Add AI response as optimistic message
         setOptimisticMessages(prev => [...prev, {
@@ -239,10 +293,14 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
           feedback: null
         }]);
 
-        setGuestMessageSent(true);
-        localStorage.setItem("kp_guest_sent", "1");
-        // Show signup prompt after a short delay
-        setTimeout(() => setShowSignupPrompt(true), 1500);
+        setGuestMessagesInCurrentConv(result.messagesInConversation);
+        void guestQuotaQuery.refetch();
+
+        // Block and show signup prompt ONLY when reaching Batas Pesan Guest for this conversation
+        if (result.messagesInConversation >= result.guestMessageLimit) {
+          setGuestForceBlocked(true);
+          setTimeout(() => setShowSignupPrompt(true), 1500);
+        }
         return;
       }
 
@@ -283,8 +341,8 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
       // Show credits exhausted or signup prompt if that's the error
       if (error?.message?.includes?.("Kredit") || error?.data?.code === "FORBIDDEN") {
         if (isGuest) {
-          setGuestMessageSent(true);
-          localStorage.setItem("kp_guest_sent", "1");
+          setGuestForceBlocked(true);
+          void guestQuotaQuery.refetch();
           setShowSignupPrompt(true);
         } else {
           setShowCreditsExhausted(true);
@@ -294,7 +352,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
       setOptimisticMessages(prev => prev.filter(m => m.id !== tempId));
       isCreatingNewChat.current = false;
     }
-  }, [message, currentChatId, isGuest, guestMessageSent, creditsQuery.data, createChatMutation, sendMessageMutation, guestMessageMutation, utils, scrollToBottom]);
+  }, [message, currentChatId, isGuest, guestMessageSent, guestConversationId, optimisticMessages, creditsQuery.data, createChatMutation, sendMessageMutation, guestMessageMutation, guestQuotaQuery, utils, scrollToBottom, scrollHistoryToTop]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -302,6 +360,18 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
   };
 
   const handleCreateChat = () => {
+    if (isGuest) {
+      const conversationsUsed = guestQuotaQuery.data?.conversationsUsed ?? 0;
+      const conversationLimit = guestQuotaQuery.data?.guestConversationLimit ?? 1;
+      if (conversationsUsed >= conversationLimit) {
+        setShowSignupPrompt(true);
+        return;
+      }
+      setGuestConversationId(createGuestConvId());
+      setGuestMessagesInCurrentConv(0);
+      setGuestForceBlocked(false);
+      setShowSignupPrompt(false);
+    }
     // Reset to new chat state
     setCurrentChatId(null);
     setOptimisticMessages([]);
@@ -516,11 +586,12 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
                   <p className="text-muted-foreground text-xs leading-none">
                     {session?.user?.email}
                   </p>
-                  {creditsQuery.data && (
+                  {/* Hidden for now: credit information is temporarily disabled. */}
+                  {/* {creditsQuery.data && (
                     <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-sidebar-primary bg-sidebar-primary/10 px-2.5 py-1 rounded w-fit font-semibold">
                       <span>Sisa Kredit: {creditsQuery.data.credits} pesan</span>
                     </div>
-                  )}
+                  )} */}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -599,6 +670,21 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
             shadow-2xl md:shadow-none
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
           `}>
+            <div className="border-sidebar-border border-b p-3">
+              <button
+                type="button"
+                onClick={() => {
+                  handleCreateChat();
+                  handleCloseSidebar();
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-sidebar-primary px-4 py-2.5 text-sm font-medium text-sidebar-primary-foreground shadow-sm transition-all hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Percakapan Baru
+              </button>
+            </div>
             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-sidebar-primary/20 text-sidebar-primary mb-4">
                 <LogOut className="h-6 w-6 rotate-180" />
@@ -682,7 +768,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
         <main className="flex flex-1 flex-col overflow-hidden w-full">
           <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-4xl space-y-6">
-              {!hasActiveChat && (
+              {!hasActiveChat && optimisticMessages.length === 0 && (
                 <div className="flex items-center justify-center min-h-[calc(100vh-300px)]">
                   <div className="text-center max-w-2xl mx-auto px-4">
                     {/* Collab Logos */}
@@ -734,7 +820,7 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
               {/* AI Thinking Indicator */}
               {isAIThinking && <ThinkingIndicator />}
 
-              {/* Guest signup banner (inline, after first message response) */}
+              {/* Guest signup banner (inline, after conversation message limit reached) */}
               {isGuest && guestMessageSent && !isAIThinking && (
                 <SignupPrompt variant="banner" />
               )}
@@ -753,12 +839,25 @@ export function ChatShell({ initialChatId, isGuest = false }: ChatShellProps) {
           {/* Input Area */}
           <div className="border-border bg-card border-t p-4">
             <form onSubmit={handleSubmit} className="mx-auto max-w-4xl">
-              <div className="flex flex-col rounded-2xl border border-border bg-card shadow-sm transition-all duration-200 p-3">
+              <div
+                onClick={() => {
+                  if (isGuest && guestMessageSent) {
+                    setShowSignupPrompt(true);
+                  }
+                }}
+                className={`flex flex-col rounded-2xl border border-border bg-card shadow-sm transition-all duration-200 p-3 ${
+                  isGuest && guestMessageSent ? "cursor-pointer" : ""
+                }`}
+              >
                 <div className="flex-1 relative">
                   <Textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Tanyakan tentang perpajakan..."
+                    placeholder={
+                      isGuest && guestMessageSent
+                        ? "Batas pesan tercapai. Klik untuk masuk dan melanjutkan..."
+                        : "Tanyakan tentang perpajakan..."
+                    }
                     className="min-h-[40px] resize-none border-0 bg-transparent px-0 py-2 text-sm outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {

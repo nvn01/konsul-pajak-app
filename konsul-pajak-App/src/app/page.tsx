@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 
 /**
- * Root page — always redirects to /chat.
- * Both guests and authenticated users go to /chat.
- * The /chat page handles guest vs. authenticated UI internally.
+ * Root page — always redirects to /kalkulator.
+ * Both guests and authenticated users go to /kalkulator.
+ * The /kalkulator page handles guest vs. authenticated UI internally.
  */
 export default function RootPage() {
-  redirect("/chat");
+  redirect("/kalkulator");
 }
