@@ -37,6 +37,19 @@ const adminMiddleware = t.middleware(async ({ ctx, next }) => {
 
 const adminProcedure = t.procedure.use(adminMiddleware);
 
+const fullAdminMiddleware = t.middleware(async ({ ctx, next }) => {
+  const role = (ctx as { admin?: { role?: string } }).admin?.role;
+  if (role !== "admin" && role !== "superadmin") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Anda tidak memiliki hak akses untuk fitur ini.",
+    });
+  }
+  return next();
+});
+
+const fullAdminProcedure = adminProcedure.use(fullAdminMiddleware);
+
 export const adminRouter = createTRPCRouter({
   // ─── Auth ──────────────────────────────────────────
   login: publicProcedure
@@ -77,7 +90,14 @@ export const adminRouter = createTRPCRouter({
     return { success: true };
   }),
 
-  checkAuth: adminProcedure.query(() => ({ authenticated: true })),
+  checkAuth: adminProcedure.query(({ ctx }) => ({
+    authenticated: true,
+    admin: {
+      id: ctx.admin.id,
+      username: ctx.admin.username,
+      role: ctx.admin.role,
+    },
+  })),
 
   // ─── Dashboard Stats ──────────────────────────────
   stats: adminProcedure.query(async ({ ctx }) => {
@@ -121,7 +141,7 @@ export const adminRouter = createTRPCRouter({
     }),
 
   // ─── Chats ─────────────────────────────────────────
-  chats: adminProcedure
+  chats: fullAdminProcedure
     .input(z.object({ page: z.number().min(1).default(1), limit: z.number().default(10) }).optional())
     .query(async ({ ctx, input }) => {
       const page = input?.page ?? 1;
@@ -146,7 +166,7 @@ export const adminRouter = createTRPCRouter({
       return { items, total, totalPages: Math.ceil(total / limit), page };
     }),
 
-  chatDetail: adminProcedure
+  chatDetail: fullAdminProcedure
     .input(z.object({ chatId: z.string() }))
     .query(async ({ ctx, input }) => {
       const chat = await ctx.db.chat.findUnique({
@@ -174,7 +194,7 @@ export const adminRouter = createTRPCRouter({
     }),
 
   // ─── Feedback ──────────────────────────────────────
-  feedback: adminProcedure
+  feedback: fullAdminProcedure
     .input(
       z.object({
         page: z.number().min(1).default(1),
@@ -213,7 +233,7 @@ export const adminRouter = createTRPCRouter({
     }),
 
   // ─── Laporan (Reports) ───────────────────────────────
-  reports: adminProcedure
+  reports: fullAdminProcedure
     .input(
       z.object({
         page: z.number().min(1).default(1),
@@ -298,7 +318,7 @@ export const adminRouter = createTRPCRouter({
 
   // ─── Quota Management ─────────────────────────────────
 
-  quotaConfig: adminProcedure.query(async ({ ctx }) => {
+  quotaConfig: fullAdminProcedure.query(async ({ ctx }) => {
     try {
       await ctx.db.$executeRawUnsafe(
         `ALTER TABLE "QuotaConfig" ADD COLUMN IF NOT EXISTS "guestConversationLimit" INTEGER NOT NULL DEFAULT 1;`
@@ -315,7 +335,7 @@ export const adminRouter = createTRPCRouter({
     return config;
   }),
 
-  updateQuotaConfig: adminProcedure
+  updateQuotaConfig: fullAdminProcedure
     .input(
       z.object({
         defaultCredits: z.number().min(1).max(10000),
@@ -342,7 +362,7 @@ export const adminRouter = createTRPCRouter({
       });
     }),
 
-  userCredits: adminProcedure
+  userCredits: fullAdminProcedure
     .input(
       z.object({
         page: z.number().min(1).default(1),
@@ -379,7 +399,7 @@ export const adminRouter = createTRPCRouter({
       return { items, total, totalPages: Math.ceil(total / limit), page };
     }),
 
-  adjustUserCredits: adminProcedure
+  adjustUserCredits: fullAdminProcedure
     .input(
       z.object({
         userId: z.string(),
@@ -393,7 +413,7 @@ export const adminRouter = createTRPCRouter({
       });
     }),
 
-  toggleUserFlag: adminProcedure
+  toggleUserFlag: fullAdminProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.db.user.findUnique({ where: { id: input.userId } });
@@ -409,7 +429,7 @@ export const adminRouter = createTRPCRouter({
       });
     }),
 
-  resetUserQuota: adminProcedure
+  resetUserQuota: fullAdminProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const config = await ctx.db.quotaConfig.findFirst({ where: { id: 1 } });
@@ -426,7 +446,7 @@ export const adminRouter = createTRPCRouter({
       });
     }),
 
-  guestBlockedIps: adminProcedure
+  guestBlockedIps: fullAdminProcedure
     .input(
       z
         .object({
@@ -557,7 +577,7 @@ export const adminRouter = createTRPCRouter({
       };
     }),
 
-  unblockGuestIp: adminProcedure
+  unblockGuestIp: fullAdminProcedure
     .input(z.object({ ip: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.guestUsage.deleteMany({
@@ -566,7 +586,7 @@ export const adminRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  resetAllGuestIps: adminProcedure.mutation(async ({ ctx }) => {
+  resetAllGuestIps: fullAdminProcedure.mutation(async ({ ctx }) => {
     await ctx.db.guestUsage.deleteMany({});
     return { success: true };
   }),
