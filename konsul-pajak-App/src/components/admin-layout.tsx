@@ -67,28 +67,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
 
-          <div className="flex items-center gap-4">
-            {admin && (
-              <div className="hidden sm:flex items-center gap-2 text-xs">
-                <span className="text-primary-foreground/90 font-mono font-medium">{admin.username}</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                    isStaff
-                      ? "bg-amber-500/20 text-amber-200 border border-amber-500/30"
-                      : "bg-emerald-500/20 text-emerald-200 border border-emerald-500/30"
-                  }`}
-                >
-                  {admin.role}
-                </span>
-              </div>
-            )}
-            <button
-              onClick={() => logoutMutation.mutate()}
-              className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors cursor-pointer"
-            >
-              Logout
-            </button>
-          </div>
+          <button
+            onClick={() => logoutMutation.mutate()}
+            className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors cursor-pointer"
+          >
+            Logout
+          </button>
         </div>
 
         {/* Mobile nav */}
@@ -122,7 +106,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2">Akses Ditolak</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                Akun Anda ({admin?.username}) dengan peran <strong>Staff</strong> tidak memiliki izin untuk mengakses halaman ini. Menu yang dapat diakses: Dashboard, Pengguna, dan Peraturan.
+                Anda tidak memiliki izin untuk mengakses halaman ini. Menu yang dapat diakses: Dashboard, Pengguna, dan Peraturan.
               </p>
               <Link
                 href="/admin/dashboard"

@@ -43,16 +43,7 @@ export default function AdminDashboardPage() {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
-          {isStaff && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Panel Administrator Terbatas (Dashboard, Pengguna, Peraturan)
-            </p>
-          )}
-        </div>
-      </div>
+      <h2 className="text-2xl font-bold text-foreground mb-6">Dashboard</h2>
 
       {statsQuery.isLoading && (
         <p className="text-muted-foreground mb-6">Memuat statistik...</p>
